@@ -432,6 +432,7 @@ def main():
             #publish the mapping stream with the streams and buckets created
             publishToMappingStream(args.chainName, args.multichainLoc, args.datadir, 'StreamsUsed', concept_type, stream_dictionary)
             #for each concept insert data to mapping stream
+            
             for concept in stream_concept_dictionary.keys():
                 stream = stream_concept_dictionary[concept]
                 p_map = multiprocessing.Process(target=publishToMappingStream, args = (args.chainName, args.multichainLoc, args.datadir,
@@ -443,7 +444,6 @@ def main():
                 process.join()
             
             print('Published mapping stream for {}'.format(table))
-            
             ##split the dataset based on number of CPUs available and insert
             df_split = np.array_split(df, cpu)  
             for i in range(cpu):
@@ -461,7 +461,6 @@ def main():
             e = int(end - start)
             print('\n\n Time elapsed:\n\n')
             print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
-    
     except:
         sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
         quit()

@@ -193,7 +193,7 @@ def extractRelevantGenotypes(row):
     ##for every allele filter for that genotype
     for allele in alleles:
         genotypes = list(row[(row == allele)].index)
-        relevantGenotypes[(row['ref'], roq['alt'], allele)] = genotypes
+        relevantGenotypes[(row['ref'], row['alt'], allele)] = genotypes
     return relevantGenotypes
 
 
@@ -310,22 +310,7 @@ def publishToDataStreams(chainName, multichainLoc, datadir, alt_genotypes, chrom
     return 
 
 
-# In[48]:
-
-
-output = '][wpfefdsfref5645p[][]\\[]]]'
-output.decode(
-    'utf-8').replace('\n', '').replace(
-    '[','').replace(']','').replace('},    {','},, {').replace(
-    ' ','').replace('        ','').replace(
-    '    ','').replace('     ','').replace(
-    '"keys":','"keys":[').replace(
-    ',"offchain"','],"offchain"').replace(
-    '"json":','"json":[').replace('},"confirmations"',']},"confirmations"').split(
-    ',,')
-
-
-# In[70]:
+# In[ ]:
 
 
 def extractPreviousMAF(chainName, multichainLoc, datadir, chrom):

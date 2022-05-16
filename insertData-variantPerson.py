@@ -4,12 +4,11 @@
 # In[1]:
 
 
-# %load '/gpfs/commons/groups/gursoy_lab/aelhussein/Code/SAMChain/SAMchain/insertData.py'
 '''
-insertData-variantPatient.py
-Loads tab-separated text file data onto an existing data stream on an existing multichain
-Usage: $ python insertData-mimic-Domain.py -cn=<Chain name> -dr=<Chain path> hp=<Vocabulary path> -dp=<Data tables path> 
-modified by AE 02/2022
+insertData-variantPerson.py
+Inserts data from VCF files (variant data)
+Usage: $ python insertData.py -cn=<chain name> -dr=<Chain path> -vf=<VCF path> -mf=<Person_id:VCF mapping file path>
+modified by AE 05/2022
 '''
 
 import sys
@@ -61,8 +60,13 @@ def subscribeToStreams(chainName, multichainLoc, datadir):
 # In[4]:
 
 
-##create file paths
 def loadFilePaths(dataPath, variantFiles):
+    '''
+    Load the VCF file paths that will be inserted
+    Input:
+        dataPath - path where the VCF files are stored
+        variantFiles - files to be added (one per chromosome)
+    '''
     #parse the files that are part of user input
     if variantFiles == 'all':
         files = [x for x in range(1,23)]
@@ -72,14 +76,20 @@ def loadFilePaths(dataPath, variantFiles):
     for file in files:
         filePath = 'ALL.chr{}.phase3_shapeit2_mvncall_integrated_v3plus_nounphased.rsID.genotypes.GRCh38_dbSNP_no_SVs.vcf.gz'.format(file)
         paths.append(dataPath+filePath)
+    random.shuffle(paths)
     return paths
 
 
 # In[5]:
 
 
-##Mapping of person_ids and sample_ids (necessary as using dummy data)
 def mappingSamplePerson(mappingFile, variantFile):
+    '''
+    Mapping of person_ids to sample_ids (necessary as using dummy data so the ids are not aligned)
+    Input:
+        mappingFile - path where the person:vcf ID mapping is held
+        variantFiles - files to be added (one per chromosome)
+    '''
     #mapping of person_ids to sample_ids, needed as using fake sample genes
     with open('{}.txt'.format(mappingFile)) as f:
         mapping = f.read()    
@@ -97,6 +107,11 @@ def mappingSamplePerson(mappingFile, variantFile):
 
 
 def publishMappingPerson(chainName, multichainLoc, datadir, sample_mapping):
+    '''
+    Publish the samples that were added during this insertion
+    Input:
+        sample_mapping: dictionary converting person_ids:vcf sample_ids
+    '''
     streamName = 'mappingData_variants'
     streamKeys = 'samples'
     streamValues = '{'+'"json":{}'.format(list(sample_mapping.values())) + '}'
@@ -116,10 +131,17 @@ def publishMappingPerson(chainName, multichainLoc, datadir, sample_mapping):
 # In[7]:
 
 
-##BCF tools wrapper to extract all variants for patient and wrangle to format for blockchain data entry
 def extractPersonVariants(file, sample_id, sample_col):
+    '''
+    Extract all variants for patient and wrangle to format for blockchain data entry
+    Input:
+        sample_id: id of the sample being added
+        sample_col: the column in the VCF file that sample data is stored
+    '''
+    ##BCFtools request (CHANGE FROM JUST TAKING THE HEAD)
     request = 'bcftools view -s {}  -e \'GT[{}]="RR"\' -H  {} | head -n 100'.format(sample_id, sample_col, file)
     output = subprocess.check_output(request, shell = True)
+    ##extract the data from the output
     df = pd.read_csv(BytesIO(output), sep='\t', usecols = [0,1,3,4,9], names= ['chrom', 'pos', 'ref', 'alt', 'gt'], index_col = 'pos')
     df.index = df.index.map(str)
     #streamname
@@ -132,8 +154,14 @@ def extractPersonVariants(file, sample_id, sample_col):
 # In[8]:
 
 
-#request to add data to multichain
 def publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues):
+    '''
+    Publish person entry to field
+    Input:
+        streamName: chromosome being added
+        streamKeys: person_id
+        streamValues: all the variants:genotype for that person 
+    '''
     publishCommand = [multichainLoc+'multichain-cli', 
         str('{}'.format(chainName)), 
         str('-datadir={}'.format(datadir)),
@@ -149,8 +177,13 @@ def publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKey
 # In[9]:
 
 
-##loop through all samples and add to multichain
 def publishToDataStreams(chainName, multichainLoc, datadir, mappingFile, paths):
+    '''
+    loop through all samples and add to multichain
+    Input:
+        mappingFile - path where the person:vcf ID mapping is held
+        paths - path for the VCF files being added
+    '''
     for path in paths:
         #load mapping dictionary and file paths
         sample_mapping = mappingSamplePerson(mappingFile, path)
