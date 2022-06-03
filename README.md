@@ -8,7 +8,7 @@ https://www.multichain.com/getting-started/)
 
 **Script:**
 #### Builds the empty chain
-<!-- python buildChain.py -cn=combchain -dr=[MULTICHAIN DIR] -->
+python buildChain.py -cn=combchain -dr=[MULTICHAIN DIR]
 
 #### Creates concept streams for clinical concepts in OMOP
 python createStream-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
@@ -16,25 +16,32 @@ python createStream-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=
 #### Inserts OMOP concepts in domain-view
 python insertData-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
 
-##Creates person streams for clinical concepts 
+#### Creates person streams for clinical concepts 
+
 python createStream-OMOP-Person.py -cn=combchain --datadir=[MULTICHAIN DIR]
 
-##Inserts OMOP concepts in person-view
+#### Inserts OMOP concepts in person-view
+
 python insertData-OMOP-Person.py -cn=combchain --datadir=[MULTICHAIN DIR] -dp=[CLINICAL DATA DIR] --personPath=[PATIENT TABLE DIR]
 
-##Creates chromosome streams for VCF files
+#### Creates chromosome streams for VCF files
+
 python createStream-variants.py -cn=combchain --datadir=[MULTICHAIN DIR]
 
-##Inserts variant data from VCF files, inserted per position
+#### Inserts variant data from VCF files, inserted per position
+
 python insertData-variant.py -cn=combchain --datadir=[MULTICHAIN DIR] -mf=[PATIENT:GENETIC SAMPLE MAPPING FILE DIR] -dp=[VCF FILE DIR]
 
-##Inserts variant data from VCF files, inserted per sample
+#### Inserts variant data from VCF files, inserted per sample
+
 python insertData-variantPerson.py -cn=combchain --datadir=[MULTICHAIN DIR] -mf=[PATIENT:GENETIC SAMPLE MAPPING FILE DIR] -dp=[VCF FILE DIR]
 
-##Creates chromosome streams for GTF files
+#### Creates chromosome streams for GTF files
+
 python createStream-gtf.py -cn=combchain -dr=[MULTICHAIN DIR]
 
-##Insersts genetic data from GTF files
+#### Inserts genetic data from GTF files
+
 python insertData-gtf.py -cn=combchain -dr=[MULTICHAIN DIR] -gp=[GTF FILE DIR] -vp=[VCF FILE DIR]
 
 **Args**
