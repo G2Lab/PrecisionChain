@@ -7,14 +7,13 @@ https://www.multichain.com/getting-started/)
 - bcftools (https://samtools.github.io/bcftools/bcftools.html)
 
 **Script:**
-##Builds the empty chain
+#### Builds the empty chain
 <!-- python buildChain.py -cn=combchain -dr=[MULTICHAIN DIR] -->
 
-##Creates concept streams for clinical concepts in OMOP
-
+#### Creates concept streams for clinical concepts in OMOP
 python createStream-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
 
-##Inserts OMOP concepts in domain-view
+#### Inserts OMOP concepts in domain-view
 python insertData-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
 
 ##Creates person streams for clinical concepts 
