@@ -4,7 +4,7 @@ module load bcftools
 
 python buildChain.py -cn=combchain -dr=[MULTICHAIN DIR]
 
-python createStream-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=/gpfs/commons/groups/gursoy_lab/aelhussein/Data/mimic_iv_omop/Clinical_data/ 
+python createStream-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
 
 python insertData-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
 
