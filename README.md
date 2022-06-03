@@ -8,7 +8,7 @@ https://www.multichain.com/getting-started/)
 
 **Script:**
 ##Builds the empty chain
-<! python buildChain.py -cn=combchain -dr=[MULTICHAIN DIR] >
+<!-- python buildChain.py -cn=combchain -dr=[MULTICHAIN DIR] -->
 
 ##Creates concept streams for clinical concepts in OMOP
 
