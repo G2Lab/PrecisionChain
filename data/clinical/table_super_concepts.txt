@@ -1,0 +1,1 @@
+{"condition_occurrence": "441840", "drug_exposure": "99999999", "device_exposure": "4169265", "measurement": "36206173,37044165", "observation": "441840", "procedure_occurrence": "4322976", "specimen": "4048506", "visit_occurrence": "9202"}
