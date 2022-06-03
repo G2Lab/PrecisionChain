@@ -11,6 +11,7 @@ https://www.multichain.com/getting-started/)
 python buildChain.py -cn=combchain -dr=[MULTICHAIN DIR]
 
 ##Creates concept streams for clinical concepts in OMOP
+
 python createStream-OMOP-Domain.py -cn=combchain --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
 
 ##Inserts OMOP concepts in domain-view
