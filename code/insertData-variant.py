@@ -93,7 +93,7 @@ def mappingSamplePerson(mappingFile, variantFile):
         variantFiles - files to be added (one per chromosome)
     '''
     #mapping of person_ids to sample_ids, needed as using fake sample genes
-    with open('{}.txt'.format(mappingFile)) as f:
+    with open('{}'.format(mappingFile)) as f:
         mapping = f.read()    
     sample_person = json.loads(mapping)
     #extract samples from vcf file
