@@ -112,7 +112,7 @@ def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
         variant - position of the variant of interest
         chrom - which chromosome the variant is on
     '''
-    for variant in variants:
+    for variant in variants.split(','):
         gene = extractVariantGenes(chainName, multichainLoc, datadir, variant, chrom)
         if gene:
             gene_data = exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom)
