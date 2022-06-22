@@ -30,6 +30,9 @@ import multiprocessing
 import numpy as np
 from itertools import compress
 from datetime import datetime
+from pprint import pprint as pp
+import json
+from json.decoder import JSONDecodeError
 warnings.simplefilter(action='ignore')
 
 
@@ -112,7 +115,9 @@ def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
         variant - position of the variant of interest
         chrom - which chromosome the variant is on
     '''
-    for variant in variants.split(','):
+    if type(variants) is str:
+        variants = variants.split(',')
+    for variant in variants:
         gene = extractVariantGenes(chainName, multichainLoc, datadir, variant, chrom)
         if gene:
             gene_data = exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom)
@@ -640,11 +645,20 @@ def main():
         
         ##deprecated
         elif args.query== action_choices[2]:
-            queryMAFVariantGene(args.chainName, args.multichainLoc, args.datadir, args.chromosome, args.inputRange)
+            result = queryMAFVariantGene(args.chainName, args.multichainLoc, args.datadir, args.chromosome, args.inputRange)
         
         elif args.query == action_choices[3]:
-            queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
+            result = queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
         
+        with open("results.json", "a+") as f:
+            try:
+                data = json.load(f)
+            except JSONDecodeError:
+                data = {}
+            current_search = {"{}".format(" ".join(sys.argv[3:])): result.to_json(orient="records")}
+            data.update(current_search)
+            json.dump(data, f)
+
         end = time.time()
         e = int(end - start)
         print('\n\n Time elapsed:\n\n')
