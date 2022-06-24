@@ -659,8 +659,18 @@ def main():
                 data = json.load(f)
         except FileNotFoundError:
             data = []
+        filtered_results = []
         if type(result) is not list:
             result = json.loads(result.to_json(orient="records"))
+        else:
+            for item in result:
+                if type(item) is pd.DataFrame and item.empty:
+                    continue
+                elif type(item) is pd.DataFrame:
+                    filtered_results.append(json.loads(item.to_json(orient="records")))
+                elif item:
+                    filtered_results.append(item)
+            result = filtered_results
         current_search = {"{}".format(" ".join(sys.argv[3:])): result}
         data.append(current_search)
         with open("results.json", "w+") as f:
