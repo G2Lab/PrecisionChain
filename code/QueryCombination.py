@@ -654,14 +654,9 @@ def main():
         elif args.query == action_choices[3]:
             result, result_dict = queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
         
-        try:
-            with open("results.json", "r") as f:
-                data = json.load(f)
-        except FileNotFoundError:
-            data = []
         filtered_results = []
-        if result_dict:
-            result = result_dict
+        if args.query == action_choices[3] and result_dict:
+            result = {str(k):v for k, v in result_dict.items()}
         elif type(result) is not list:
             result = json.loads(result.to_json(orient="records"))
         else:
@@ -674,9 +669,6 @@ def main():
                     filtered_results.append(item)
             result = filtered_results
         current_search = {"{}".format(" ".join(sys.argv[3:])): result}
-        data.append(current_search)
-        with open("results.json", "w+") as f:
-            json.dump(data, f)
 
         end = time.time()
         e = int(end - start)
@@ -685,7 +677,6 @@ def main():
     
     except Exception as e:
         print(e)
-        pdb.set_trace()
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         
