@@ -32,6 +32,7 @@ from itertools import compress
 from datetime import datetime
 from pprint import pprint as pp
 import json
+import pdb
 from json.decoder import JSONDecodeError
 warnings.simplefilter(action='ignore')
 
@@ -653,15 +654,16 @@ def main():
         elif args.query == action_choices[3]:
             result = queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
         
-        with open("results.json", "a+") as f:
-            try:
+        try:
+            with open("results.json", "r") as f:
                 data = json.load(f)
-            except JSONDecodeError:
-                data = []
-            if type(result) is not list:
-                result = json.loads(result.to_json(orient="records"))
-            current_search = {"{}".format(" ".join(sys.argv[3:])): result}
-            data.append(current_search)
+        except FileNotFoundError:
+            data = []
+        if type(result) is not list:
+            result = json.loads(result.to_json(orient="records"))
+        current_search = {"{}".format(" ".join(sys.argv[3:])): result}
+        data.append(current_search)
+        with open("results.json", "w+") as f:
             json.dump(data, f)
 
         end = time.time()
@@ -671,6 +673,7 @@ def main():
     
     except Exception as e:
         print(e)
+        pdb.set_trace()
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         
