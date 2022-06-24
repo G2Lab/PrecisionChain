@@ -281,14 +281,17 @@ def queryMAFVariantGene(chainName, multichainLoc, datadir, chrom, inputRange):
     ##dictionary of variant, MAF and associated personIDs
     variant_dict = extractMAFPersonIDs(chainName, multichainLoc, datadir, chrom, inputRange)
     ##loop through each variant and query the gene stream for associated genes
+    results = []
     for variant, person_ids in variant_dict.items():
         gene_df = queryVariantGene(chainName, multichainLoc, datadir, [variant[0]], chrom)
         try:
             gene_df['gt'] = variant[1]
             gene_df['person_ids'] = [person_ids for _ in range(len(gene_df))]
+            results.append(gene_df)
             print(gene_df)
         except:
             pass
+    return results
 
 
 
@@ -654,9 +657,11 @@ def main():
             try:
                 data = json.load(f)
             except JSONDecodeError:
-                data = {}
-            current_search = {"{}".format(" ".join(sys.argv[3:])): result.to_json(orient="records")}
-            data.update(current_search)
+                data = []
+            if type(result) is not list:
+                result = json.loads(result.to_json(orient="records"))
+            current_search = {"{}".format(" ".join(sys.argv[3:])): result}
+            data.append(current_search)
             json.dump(data, f)
 
         end = time.time()
