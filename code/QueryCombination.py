@@ -652,7 +652,7 @@ def main():
             result = queryMAFVariantGene(args.chainName, args.multichainLoc, args.datadir, args.chromosome, args.inputRange)
         
         elif args.query == action_choices[3]:
-            result = queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
+            result, result_dict = queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
         
         try:
             with open("results.json", "r") as f:
@@ -660,7 +660,9 @@ def main():
         except FileNotFoundError:
             data = []
         filtered_results = []
-        if type(result) is not list:
+        if result_dict:
+            result = result_dict
+        elif type(result) is not list:
             result = json.loads(result.to_json(orient="records"))
         else:
             for item in result:
