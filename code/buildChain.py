@@ -52,6 +52,24 @@ def createChain(chainName, multichainLoc, datadir):
 
 # In[ ]:
 
+def createStream(chainName, multichainLoc, datadir):
+    '''
+    Given a chain name and the name of the new stream, makes that stream
+    '''
+    streamName = 'audit_log'
+    createStreamCommand=multichainLoc+'multichain-cli {} -datadir={} create stream {} true'.format(chainName,datadir,streamName)
+    subscribeStreamCommand=multichainLoc+'multichain-cli {} -datadir={} subscribe {}'.format(chainName,datadir,streamName)
+
+    #make stream of name StreamName
+    procCreate = subprocess.Popen(createStreamCommand.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    procCreate.wait()
+
+    #subscribe to the stream
+    procSubscribe = subprocess.Popen(subscribeStreamCommand.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    procCreate.wait()
+    return
+
+
 
 ######################################################################################################
 def main():
@@ -66,6 +84,7 @@ def main():
         #make a chain
         print("--CHAIN CREATION--")
         createChain(args.chainName, args.multichainLoc, args.datadir)
+        createStream(args.chainName, args.multichainLoc, args.datadir
         print("Chain construction complete! Chain name: "+args.chainName)
         end = time.time()
 
