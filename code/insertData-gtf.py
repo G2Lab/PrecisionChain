@@ -102,7 +102,7 @@ def publishToVariantStream(chainName, multichainLoc, datadir, streamName, stream
             str('-datadir={}'.format(datadir)),
             'publish',
             str('gene_variant_chrom_{}'.format(streamName)), 
-            str('["{}", "{}"]'.format(streamKeys[0], streamKeys[1])),
+            str('["{}", "{}", "{}"]'.format(streamKeys[0], streamKeys[1], streamKeys[2])),
             '{'+'"json":{}'+'}']
     procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     procPublish.wait()
@@ -126,7 +126,7 @@ def publishToGeneStream(chainName, multichainLoc, datadir, streamName, streamKey
             str('-datadir={}'.format(datadir)),
             'publish',
             str('gene_chrom_{}'.format(streamName)), 
-            str('["{}", "{}"]'.format(streamKeys[0], streamKeys[1])),
+            str('["{}", "{}", "{}"]'.format(streamKeys[0], streamKeys[1], streamKeys[2])),
             str('{}'.format(streamValues))]
     procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     procPublish.wait()
@@ -146,6 +146,7 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
     '''
     ##extract relevant gene info
     gene_id = gene['gene_id']
+    gene_name = gene['gene_name']
     gene_feature = gene['feature']
     position = gene['start'], gene['end']
     ##create data entry information and publish to gene stream
@@ -163,7 +164,7 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
     ##for every variant position create entry with gene 
     for variant in variants:
         streamName = chrom
-        streamKeys = [variant, gene_id]
+        streamKeys = [variant, gene_id, gene_name]
         publishToVariantStream(chainName, multichainLoc, datadir, streamName, streamKeys)
     return
 
@@ -181,7 +182,7 @@ def publishGTF(chainName, multichainLoc, datadir, paths):
         geneFile, variantFile, chrom = path
         #read in gtf file using data
         df = read_gtf(geneFile, 
-                      usecols=['seqname','gene_id','feature','start','end', 'gene_type','strand'])
+                      usecols=['seqname','gene_id','feature','start','end', 'gene_type', 'gene_name','strand'])
         df.apply(publishToStreams, axis =1, args= (chainName, multichainLoc, datadir, chrom, variantFile))
     return
 

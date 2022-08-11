@@ -137,6 +137,7 @@ def subscribeToStream(chainName, streamName, multichainLoc, datadir):
 #subscribe to person streams
 def subscribeToStreams(chainName, multichainLoc, datadir):
     subscribeToStream(chainName, "mappingData_person", multichainLoc, datadir) 
+    subscribeToStream(chainName, "person_demographics", multichainLoc, datadir)
     for i in range(1, 21):
         subscribeToStream(chainName, "person_stream_{}".format(i), multichainLoc, datadir)
     return
@@ -170,15 +171,20 @@ def publishToMappingStreams(chainName, multichainLoc, datadir, person_df):
 
             #demographics stream
             streamName = "person_demographics"
-            streamKeys = list(person_df[['person_id', 'gender_concept_id', 'year_of_birth', 'race_concept_id',
-                             'ethnicity_concept_id', 'stream']][person_df['person_id']==person_id].values[0])
-            streamValues ='{"json":'+person_df[person_df['person_id'] == person_id].to_json(orient = 'records').strip('[').strip(']')+'}'
+            row = person_df[person_df['person_id']==person_id]
+            if row['race_concept_id'].iloc[0] == 0:
+                race = row['ethnicity_source_value'].iloc[0]
+            else:
+                race = row['race_source_value'].iloc[0]
+            streamKeys = row['person_id'].iloc[0], row['gender_source_value'].iloc[0], race
+
+            streamValues ='{"json":'+row.to_json(orient = 'records').strip('[').strip(']')+'}'
             publishCommand = [multichainLoc+'multichain-cli', 
                 str('{}'.format(chainName)), 
                 str('-datadir={}'.format(datadir)),
                 'publish',
                 str('{}'.format(streamName)), 
-                str('["{}","{}","{}","{}","{}"]'.format(streamKeys[0],streamKeys[1],streamKeys[2],streamKeys[3],streamKeys[4])),
+                str('["{}","{}","{}"]'.format(streamKeys[0],streamKeys[1],streamKeys[2])),
                 str('{}'.format(streamValues))
                     ]
             procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

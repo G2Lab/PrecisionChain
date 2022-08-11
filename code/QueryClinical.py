@@ -107,6 +107,26 @@ def extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys):
 
 # In[ ]:
 
+def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
+    ##check if search from running query or person specific query
+    if isinstance(cohortKeys,str):
+        personids = [int(id) for id in cohortKeys.split(',')]
+    else:
+        personids = cohortKeys
+    persons_df = pd.DataFrame()
+    
+    for personid in personids:
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
+        items = subprocess.check_output(queryCommand.split())
+        json_item = json.loads(items, parse_int= int)[1]['data']['json']
+        person_df = pd.DataFrame.from_dict(json_item, orient = 'index').T
+        persons_df = pd.concat([persons_df,person_df])
+    persons_df.set_index('person_id', inplace = True)
+    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    persons_json = persons_df.to_json(orient = 'index')
+    print(persons_json)
+    return persons_json
+
 
 def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
@@ -146,8 +166,11 @@ def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys
 
 
 def query(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
+    
     cohortKeys, searchKeys = parseKeys(cohortKeys, searchKeys)
-    if searchKeys[0] == 'all' :
+    if searchKeys[0] == 'demographics':
+        queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
+    elif searchKeys[0] == 'all' :
         queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
     else:
         queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)

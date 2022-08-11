@@ -466,8 +466,8 @@ def main():
             p_ins.start()
             
             
-            for process in processes:
-                process.join()
+        for process in processes:
+            process.join()
             
             print('Inserted {}'.format(paths_split_ins))
             end = time.time()
