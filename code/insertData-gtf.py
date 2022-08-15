@@ -151,7 +151,7 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
     position = gene['start'], gene['end']
     ##create data entry information and publish to gene stream
     streamName = chrom
-    streamKeys = gene_id, gene_feature
+    streamKeys = gene_id, gene_name, gene_feature
     values = gene[['start', 'end', 'gene_type','strand']].to_dict()
     values = str(values).replace("\'", '"')
     streamValues = '{'+'"json":{}'.format(values) +'}'
