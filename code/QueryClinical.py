@@ -129,23 +129,29 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
 
 
 def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
+    '''
+    Query domain streams (if using domain view) using the cohort keys to build cohort and search keys to extract the relevant information
+    Input:
+        cohortKeys: OMOP keys used to build cohort
+        searchKeys: OMOP keys for data of interest for cohort (i.e. particular medication)
+    '''
+    ##extract person_ids
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
+    ##extract streams for search keys
     searchStreams = queryMappingStream(chainName, multichainLoc, datadir, searchKeys)
-
+    ##for each stream:bucket of interest extract the relevant information
     for stream in searchStreams:
         buckets = ast.literal_eval(stream[3])
         for bucket in buckets:
+            ##loop through patients to ensure only querying data of patients of interest
             for person_id in person_ids:
-                try:
-                    queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamqueryitems {}_id_{}_bucket_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
-                                                                                                stream[1], stream[2], bucket+1, person_id, stream[0])
+                    queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {}'.format(chainName, datadir,
+                                                                                                stream[1], stream[2], bucket+1, person_id)
                     items = subprocess.check_output(queryCommand.split())
                     matches = json.loads(items, parse_int= int)
-                    print(matches)
+                    if matches:
+                        print(matches)
                     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-                except:
-                    pass
-
 
 # In[ ]:
 
