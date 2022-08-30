@@ -60,6 +60,7 @@ def loadConcepts(dataPath, table):
     '''
     dataPath = '{}/{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
+    df['person_id'] = df['person_id'].astype(str)
     unique_codes = list(df.iloc[:,2].unique())
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]
@@ -224,6 +225,7 @@ def loadData(dataPath, table, keys):
     #load data and extract relevant data
     dataPath = '{}/{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
+    df['person_id'] = df['person_id'].astype(str)
     #get concept
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]

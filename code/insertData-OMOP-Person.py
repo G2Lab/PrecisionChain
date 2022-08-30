@@ -54,6 +54,7 @@ def loadPatients(path):
     '''
     df = pd.read_csv(path)
     df['stream'] = pd.qcut(df['person_id'], q = 20, labels =np.arange(1,21,1))
+    df['person_id'] = df['person_id'].astype(str)
     return df
 
 
@@ -84,6 +85,7 @@ def loadData(path, table):
         table - the specific table being added
     '''
     df = pd.read_csv(path + table +'.csv')
+    df['person_id'] = df['person_id'].astype(str)
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]
     
