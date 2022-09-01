@@ -148,6 +148,7 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
         cohortKeys: OMOP keys used to build cohort
         searchKeys: OMOP keys for data of interest for cohort (i.e. particular medication)
     '''
+    matches = []
     ##extract person_ids
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
     ##extract streams for search keys
@@ -161,10 +162,11 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
                     queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {} false 999'.format(chainName, datadir,
                                                                                                 stream[1], stream[2], bucket+1, person_id)
                     items = subprocess.check_output(queryCommand.split())
-                    matches = json.loads(items, parse_int= int)
+                    matches += json.loads(items, parse_int= int)
                     if matches:
                         print(matches)
                     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    return matches
 
 # In[ ]:
 
