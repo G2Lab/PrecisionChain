@@ -1,0 +1,4 @@
+.vscode
+code/__pycache__/
+data/sample_clinical_results.json
+data/sample_results.json
