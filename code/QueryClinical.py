@@ -120,25 +120,14 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
         personids = [int(id) for id in cohortKeys.split(',')]
     else:
         personids = cohortKeys
-    persons_df = pd.DataFrame()
+    matches = []
     
     for personid in personids:
-        try:
-            queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
-            items = subprocess.check_output(queryCommand.split())
-            json_item = json.loads(items, parse_int= int)[1]['data']['json']
-            person_df = pd.DataFrame.from_dict(json_item, orient = 'index').T
-            persons_df = pd.concat([persons_df,person_df])
-        except:
-            pass
-    try:
-        persons_df.set_index('person_id', inplace = True)
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
+        items = subprocess.check_output(queryCommand.split())
+        matches += json.loads(items, parse_int= int)
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-        persons_json = persons_df.to_json(orient = 'index')
-        print(persons_json)
-        return persons_json
-    except:
-        return {}
+    return matches
 
 
 def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
