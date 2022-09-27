@@ -214,6 +214,7 @@ def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos)
     ##for every sample, extract their relevant positions and merge to the dataframe
     for person_id in person_ids:
         query_df = queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id)
+        query_df.index = pd.to_numeric(query_df.index)
         person_df = person_df.merge(query_df, right_index = True, left_index = True, how = 'outer')
         person_df['ref_allele'].update(person_df.pop('ref_allele_{}'.format(person_id)))
         person_df['alt_allele'].update(person_df.pop('alt_allele_{}'.format(person_id)))

@@ -450,12 +450,16 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
         chrom - chromosome of variant
         MAFRange - inputted MAF range to filter variants
     '''
-    _, numericRanges = queryRangeParser(MAFRange)
+    if MAFRange != "":
+        _, numericRanges = queryRangeParser(MAFRange)
     variants_dict = queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene, chrom)
     variants_df = pd.DataFrame.from_dict(variants_dict, orient = 'index')
-    variants_df[(variants_df['MAF'] >= numericRanges[0]) & (variants_df['MAF'] <= numericRanges[1])]
-    print(variants_df)
-    return variants_df
+    if MAFRange != "":
+        variants_df_filtered = variants_df[(variants_df['MAF'] >= numericRanges[0]) & (variants_df['MAF'] <= numericRanges[1])]
+    else:
+        variants_df_filtered = variants_df
+    print(variants_df_filtered)
+    return variants_df_filtered
 
 
 # ## log queries
@@ -504,7 +508,7 @@ def main():
     parser.add_argument("-ch", "--chromosome", help = "chromosome to search")
     parser.add_argument("-ps", "--positions",required=(action_choices[0] in sys.argv), help = "variant positions to search")
     parser.add_argument("-gn", "--gene", required=(action_choices[1:4:2] in sys.argv), help = "genes to search")
-    parser.add_argument("-ir", "--inputRange", required=(action_choices[2:4] in sys.argv), help = "MAF range to search")
+    parser.add_argument("-ir", "--inputRange", required=(action_choices[2:4] in sys.argv), help = "MAF range to search", default = "")
     parser.add_argument("-ck", "--cohortKeys", required=(action_choices[3] in sys.argv), help = "OMOP keys to define cohort by")
     
 
