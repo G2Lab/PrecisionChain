@@ -228,10 +228,10 @@ def extractPersonIDsChromsPos(person_ids, chroms, pos):
         chroms - chromosomes the variant is in
         pos - positions to search
     '''
-    chroms = chroms.split(',')
-    person_ids = person_ids.split(',')
+    chroms = [str(chr).strip() for chr in chroms.split(',')]
+    person_ids = [str(idx).strip() for idx in person_ids.split(',')]
     if pos != 'all':
-        pos = pos.split(',')
+        pos = [str(variant).strip() for variant in pos.split(',')]
     return chroms, person_ids, pos
 
 
@@ -298,7 +298,8 @@ def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos)
     ##for every sample, extract their relevant positions and merge to the dataframe
     for person_id in person_ids:
         query_df = queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id)
-        query_df.index = pd.to_numeric(query_df.index)
+        # Following line perhaps isn't necessary since the positions are strings
+        # query_df.index = pd.to_numeric(query_df.index)
         person_df = person_df.merge(query_df, right_index = True, left_index = True, how = 'outer')
         person_df['ref_allele'].update(person_df.pop('ref_allele_{}'.format(person_id)))
         person_df['alt_allele'].update(person_df.pop('alt_allele_{}'.format(person_id)))
@@ -313,7 +314,8 @@ def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos)
         person_full_df  = pd.concat([person_df, homo])
     ##filter out positions not of interest
     if pos != 'all':
-        person_full_df = person_df.loc[pos]
+        # Bek: we first find the good keys to avoid index error
+        person_full_df = person_full_df.loc[person_full_df.index.intersection(pos)]
     return person_full_df
 
 
