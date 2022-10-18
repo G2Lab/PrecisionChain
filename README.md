@@ -13,10 +13,10 @@ To set up Multichain, please download and install MultiChain Community. Once ins
 - bcftools (https://samtools.github.io/bcftools/bcftools.html)
 This is a tool developed by Samtools to support the processing of VCF files. To install please follow the instructions provided at: https://samtools.github.io/bcftools/howtos/install.html. Note, scripts will automatically call bcftools during genetic data insertion. Users are not expected to use the tool themselves.
 
-**Scripts: Chain creation and insertion**
+## Scripts: Chain creation and insertion
 This is a list of scripts to call for chain creation and data insertion. Please follow chain creation and data insertion scripts in the specified order.
 
-## Arguments used in scripts
+** Arguments used in scripts **
 [CHAIN NAME] = Name of the chain
 [MULTICHAIN DIR] = Directory where multichain data is being stored in
 [CONCEPT HIERARCHY DIR] = Directory where OMOP clinical concepts hierarch is stored (provided in same directory as clinical data)
@@ -64,9 +64,30 @@ python createStream-gtf.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR]
 
 python insertData-gtf.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -gp=[GTF FILE DIR] -vp=[VCF FILE DIR]
 
-**Scripts: Querying**
+## Scripts: Querying
+
+** Arguments used in scripts **
+[CHAIN NAME] = Name of the chain
+[MULTICHAIN DIR] = Directory where multichain data is being stored in
+[COHORT KEYS] = OMOP concept codes used to define the cohort e.g. OMOP code 201826 to select patients with Type II diabetes diagnosis. Multiple keys can be provided. Please separate keys with ','.
+[SEARCH KEYS] = OMOP concept codes to extract within the cohort e.g. OMOP code 44790340 extract all drugs taken by cohort. Multiple keys can be provided. Please separate keys with ','.
+[VIEW](QueryVariant.py) = Option of variant, person or MAF. Variant view extracts all data for a given set of positions. Person view extracts all genotypes for a given set of patients. MAF view extracts all variants within a certain MAF range.
+[VIEW](QueryCombination.py) = Option of variant, gene, MAF or clinical. Variant view extracts all genes associated with given set of variants. Gene view extracts all variants for given genes. MAF view extracts all variants within a certain MAF range for a given gene. Clinical view extracts variant information in a given gene for patients in a specified clinical cohort
+[CHROMOSOMES] = Chromsomes to search. Multiple chromosomes can be provided. Please separate with ','. Only necessary if [VIEW] = Variant OR Person
+[GENOTYPES] = Genotypes to extract from each variant i.e. '0/0', '1/0', '1/1'. Only necessary if [VIEW] = Variant
+[PERSON_IDS] = Person IDs to search. Multiple IDs can be provided. Please separate with ','. Only necessary if [VIEW] = Person
+[INPUT RANGE] = MAF range to search. Input values between 0-1 in 'X-Y' format. Only necessary if [VIEW] = MAF
+[GENE] = ENS gene ID for gene of interest to search.
 
 
+#### Query clinical data
+python QueryClinical.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -ck=[COHORT KEYS] -sk=[SEARCH KEY]
+
+#### Query genetic data
+python QueryVariant.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW] -ch=[CHROMOSOMES] -ps=[POSITIONS]  -gt=[GENOTYPES] -pi=[PERSON_IDS] -ir=[INPUT RANGE]
+
+#### Query combination of clinical and genetic data
+python QueryCombination.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW] -ch=[CHROMOSOMES] -gn=[GENE]  -ir=[INPUT RANGE] -ck=[COHORT KEYS]
 
 
 
