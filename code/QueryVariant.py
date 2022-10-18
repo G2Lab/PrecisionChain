@@ -377,7 +377,7 @@ def main():
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
     parser.add_argument("-ch", "--chromosomes", help = "chromosome to search")
-    parser.add_argument("-ps", "--positions",required=(action_choices[0:2] in sys.argv), help = "positions to search")
+    parser.add_argument("-ps", "--positions",required=(action_choices[0:2] in sys.argv), help = "positions to search", default = "all")
     parser.add_argument("-gt", "--genotypes", required=(action_choices[0] in sys.argv), help = "genotypes to search")
     parser.add_argument("-pi", "--person_ids", required=(action_choices[1] in sys.argv), help = "person_ids to search")
     parser.add_argument("-ir", "--inputRange", required=(action_choices[2] in sys.argv), help = "MAF range to search")
