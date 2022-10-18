@@ -11,6 +11,7 @@ To set up Multichain, please download and install MultiChain Community. Once ins
 
 - bcftools (https://samtools.github.io/bcftools/bcftools.html)
 This is a tool developed by Samtools to support the processing of VCF files. To install please follow the instructions provided at: https://samtools.github.io/bcftools/howtos/install.html. Note, scripts will automatically call bcftools during genetic data insertion. Users are not expected to use the tool themselves.
+- Python version 2.7.16
 
 ## Scripts: Chain creation and insertion
 This is a list of scripts to call for chain creation and data insertion. Please follow chain creation and data insertion scripts in the specified order.
