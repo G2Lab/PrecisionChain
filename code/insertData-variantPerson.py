@@ -106,52 +106,54 @@ def mappingSamplePerson(mappingFile, variantFile):
 # In[25]:
 
 
-def publishMappingPerson(chainName, multichainLoc, datadir, sample_mapping):
-    '''
-    Publish the samples that were added during this insertion
-    Input:
-        sample_mapping: dictionary converting person_ids:vcf sample_ids
-    '''
-    streamName = 'mappingData_variants'
-    streamKeys = 'samples'
-    streamValues = '{'+'"json":{}'.format(list(sample_mapping.values())) + '}'
-    publishCommand = [multichainLoc+'multichain-cli', 
-        str('{}'.format(chainName)), 
-        str('-datadir={}'.format(datadir)),
-        'publish',
-        str('{}'.format(streamName)), 
-        str('{}'.format(streamKeys)),
-        str('{}'.format(streamValues))]
-    procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procPublish.wait()
-    return
-    
-
-
-# In[7]:
-
-
-def extractPersonVariants(file, sample_id, sample_col):
+def extractPersonVariants(file, sample_id):
     '''
     Extract all variants for patient and wrangle to format for blockchain data entry
     Input:
         sample_id: id of the sample being added
-        sample_col: the column in the VCF file that sample data is stored
     '''
     ##BCFtools request (CHANGE FROM JUST TAKING THE HEAD)
-    request = 'bcftools view -s {}  -e \'GT[{}]="RR"\' -H  {} | head -n 100'.format(sample_id, sample_col, file)
+    request = 'bcftools view -e \'GT="RR"\' -s {}  -H  {}'.format(sample_id, file)
     output = subprocess.check_output(request, shell = True)
     ##extract the data from the output
     df = pd.read_csv(BytesIO(output), sep='\t', usecols = [0,1,3,4,9], names= ['chrom', 'pos', 'ref', 'alt', 'gt'], index_col = 'pos')
+    ##clean the ./. genotype
+    df['gt'] = df['gt'].str[:3]
+    df['gt'] =  df['gt'].str.replace('.','0')
     df.index = df.index.map(str)
-    #streamname
-    chrom = df.chrom.iloc[0]
-    #dict format to add
-    values = df[['ref','alt', 'gt']].T.to_dict(orient = 'list')
-    return chrom, values
+    try:
+        #streamname
+        chrom = df.chrom.iloc[0]
+        #remove homoz genotypes
+        df = df[df['gt'] != '0|0']
+        #dict format to add
+        values = df[['ref','alt', 'gt']].T.to_dict(orient = 'list')
+        return chrom, values
+    except:
+        chrom, False
 
 
-# In[8]:
+# In[26]:
+
+
+def chunkDictionary(values_dict, SIZE=2000):
+    '''
+    chunk the person variant dictionary as its too large for a single entry
+    Input:
+        values_dict: person variant dictionary from extractPersonVariants
+    '''
+    def chunks(values_dict, SIZE=2000):
+        it = iter(values_dict)
+        for i in range(0, len(values_dict), SIZE):
+            yield {k:values_dict[k] for k in islice(it, SIZE)}
+    
+    split_variants = {}
+    for i, chunk in enumerate(chunks(values_dict, SIZE = 2000)):
+        split_variants[i] = chunk
+    return split_variants
+
+
+# In[27]:
 
 
 def publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues):
@@ -174,7 +176,31 @@ def publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKey
     return
 
 
-# In[9]:
+# In[28]:
+
+
+def publishMappingPerson(chainName, multichainLoc, datadir, samples):
+    '''
+    Publish the samples that were added during this insertion
+    Input:
+        samples: List of all sample ID in file
+    '''
+    streamName = 'mappingData_variants'
+    streamKeys = 'samples'
+    streamValues = '{'+'"json":{}'.format(json.dumps(samples)) + '}'
+    publishCommand = [multichainLoc+'multichain-cli', 
+        str('{}'.format(chainName)), 
+        str('-datadir={}'.format(datadir)),
+        'publish',
+        str('{}'.format(streamName)), 
+        str('{}'.format(streamKeys)),
+        str('{}'.format(streamValues))]
+    procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    procPublish.wait()
+    return
+
+
+# In[29]:
 
 
 def publishToDataStreams(chainName, multichainLoc, datadir, mappingFile, paths):
@@ -184,20 +210,23 @@ def publishToDataStreams(chainName, multichainLoc, datadir, mappingFile, paths):
         mappingFile - path where the person:vcf ID mapping is held
         paths - path for the VCF files being added
     '''
-    for path in paths:
+    for variantFile in paths:
         #load mapping dictionary and file paths
-        sample_mapping = mappingSamplePerson(mappingFile, path)
-        publishMappingPerson(chainName, multichainLoc, datadir, sample_mapping)
-        for i, sample_id in enumerate(sample_mapping.keys()):
-            streamName, streamValues = extractPersonVariants(path, sample_id, i)
-            streamKeys = sample_mapping[sample_id]
-            streamValues ='{'+'"json":{}'.format(str(streamValues)) +'}'#create JSON data object
-            streamValues = streamValues.replace("'",'"')
-            publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
+        sample_person = mappingSamplePerson(mappingFile, variantFile)
+        publishMappingPerson(chainName, multichainLoc, datadir, list(sample_person.values()))
+        for sample_id in sample_person:
+            streamName, streamValues = extractPersonVariants(variantFile, sample_id)
+            ## only submit if have non ./. alleles
+            if isinstance(streamValues, dict):
+                ##chunk the dictionary as too large for one entry
+                split_variants = chunkDictionary(streamValues, SIZE=200)
+                for v in split_variants.values():
+                    streamKeys = sample_person[sample_id]
+                    streamValues ='{'+'"json":{}'.format(json.dumps(v)) +'}'#create JSON data object
+                    publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
+            else:
+                pass
     return
-
-
-# In[ ]:
 
 
 def main():

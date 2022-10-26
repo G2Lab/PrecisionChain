@@ -172,14 +172,22 @@ def queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id):
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems person_chrom_{} {} false 9999999999999999'.format(chainName, datadir, chrom, person_id)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
-    person_variants = matches[0]['data']['json']
-    ##create DF that records the ref allele, alt allele and genotype for that patient
-    person_variants_df = pd.DataFrame.from_dict(person_variants, orient = 'index', columns = [
-        'ref_allele_{}'.format(person_id),
-        'alt_allele_{}'.format(person_id),
-        'gt_{}'.format(person_id)])
+    person_variants_df = pd.DataFrame()
+    for i, match in enumerate(matches):
+        try:
+            person_variants = match['data']['json']
+            person_variants_df_ = pd.DataFrame.from_dict(person_variants, orient = 'index', columns = [
+            'ref_allele_{}'.format(person_id),
+            'alt_allele_{}'.format(person_id),
+            'gt_{}'.format(person_id)])
+            person_variants_df = pd.concat([person_variants_df, person_variants_df_], axis = 0)
+
+        except:
+            pass
+    person_variants_df.drop_duplicates(inplace = True)
     
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    
     return person_variants_df
 
 
