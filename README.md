@@ -29,42 +29,45 @@ This is a list of scripts to call for chain creation and data insertion. Please 
 
 
 #### Builds the empty chain
+```
 python buildChain.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR]
-
+```
 #### Creates concept streams for clinical concepts in OMOP
+```
 python createStream-OMOP-Domain.py -cn=[CHAIN NAME] --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
-
+```
 #### Inserts OMOP concepts in domain-view
+```
 python insertData-OMOP-Domain.py -cn=[CHAIN NAME] --datadir=[MULTICHAIN DIR] -hp=[CONCEPT HIERARCHY DIR] -dp=[CLINICAL DATA DIR]
-
+```
 #### Creates person streams for clinical concepts 
-
+```
 python createStream-OMOP-Person.py -cn=[CHAIN NAME] --datadir=[MULTICHAIN DIR]
-
+```
 #### Inserts OMOP concepts in person-view
-
+```
 python insertData-OMOP-Person.py -cn=[CHAIN NAME] --datadir=[MULTICHAIN DIR] -dp=[CLINICAL DATA DIR] --personPath=[PATIENT TABLE DIR]
-
+```
 #### Creates chromosome streams for VCF files
-
+```
 python createStream-variants.py -cn=[CHAIN NAME] --datadir=[MULTICHAIN DIR]
-
+```
 #### Inserts variant data from VCF files, inserted per position
-
+```
 python insertData-variant.py -cn=[CHAIN NAME] --datadir=[MULTICHAIN DIR] -mf=[PATIENT:GENETIC SAMPLE MAPPING FILE DIR] -dp=[VCF FILE DIR]
-
+```
 #### Inserts variant data from VCF files, inserted per sample
-
+```
 python insertData-variantPerson.py -cn=[CHAIN NAME] --datadir=[MULTICHAIN DIR] -mf=[PATIENT:GENETIC SAMPLE MAPPING FILE DIR] -dp=[VCF FILE DIR]
-
+```
 #### Creates chromosome streams for GTF files
-
+```
 python createStream-gtf.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR]
-
+```
 #### Inserts genetic data from GTF files
-
+```
 python insertData-gtf.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -gp=[GTF FILE DIR] -vp=[VCF FILE DIR]
-
+```
 ## Scripts: Querying
 
 #### Arguments used in scripts
@@ -82,14 +85,17 @@ python insertData-gtf.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -gp=[GTF FILE DIR
 
 
 #### Query clinical data
+```
 python QueryClinical.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -ck=[COHORT KEYS] -sk=[SEARCH KEY]
-
+```
 #### Query genetic data
+```
 python QueryVariant.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW] -ch=[CHROMOSOMES] -ps=[POSITIONS]  -gt=[GENOTYPES] -pi=[PERSON_IDS] -ir=[INPUT RANGE]
-
+```
 #### Query combination of clinical and genetic data
+```
 python QueryCombination.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW] -ch=[CHROMOSOMES] -gn=[GENE]  -ir=[INPUT RANGE] -ck=[COHORT KEYS]
-
+```
 
 
 
