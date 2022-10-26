@@ -127,7 +127,7 @@ def extractPositions(variantFile):
     positions = [output.decode('utf-8').split('\n')[0]]
     
     #get every 3rd position (MUST CHANGE IN FULL IMPLEMENTATION, CURRENTLY USING HEAD TO SPEED UP TESTING)
-    request = 'bcftools query -f \'%POS\n\' {} | head -n 1000'.format(variantFile)
+    request = "bcftools query -f \'%POS\n\' {} | awk \'NR % 1000 == 0\'".format(variantFile)
     output = subprocess.check_output(request, shell = True)
     positions.extend(output.decode('utf-8').split('\n'))
     
