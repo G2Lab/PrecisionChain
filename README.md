@@ -18,14 +18,14 @@ This is a list of scripts to call for chain creation and data insertion. Please 
 
 #### Arguments used in scripts
 
-[CHAIN NAME] = Name of the chain <br/>
-[MULTICHAIN DIR] = Directory where multichain data is being stored in <br/>
-[CONCEPT HIERARCHY DIR] = Directory where OMOP clinical concepts hierarch is stored (provided in same directory as clinical data) <br/>
-[CLINICAL DATA DIR] = Directory where OMOP formatted clinical data is stored <br/>
-[PATIENT TABLE DIR] = File where patient demographic data is stored (provided in same directory as clinical data) <br/>
-[PATIENT:GENETIC SAMPLE MAPPING FILE DIR] =  Dictionary with a mapping between Patient IDs and VCF sample IDs (this is necessary if your lab samples have different ids to your hospital records) <br/>
-[VCF FILE DIR] = Directory where VCF files are stored <br/>
-[GTF FILE DIR] = Directory where GTF files are stored <br/>
+- [CHAIN NAME] = Name of the chain <br/>
+- [MULTICHAIN DIR] = Directory where multichain data is being stored in <br/>
+- [CONCEPT HIERARCHY DIR] = Directory where OMOP clinical concepts hierarch is stored (provided in same directory as clinical data) <br/>
+- [CLINICAL DATA DIR] = Directory where OMOP formatted clinical data is stored <br/>
+- [PATIENT TABLE DIR] = File where patient demographic data is stored (provided in same directory as clinical data) <br/>
+- [PATIENT:GENETIC SAMPLE MAPPING FILE DIR] =  Dictionary with a mapping between Patient IDs and VCF sample IDs (this is necessary if your lab samples have different ids to your hospital records) <br/>
+- [VCF FILE DIR] = Directory where VCF files are stored <br/>
+- '''[GTF FILE DIR] ''' = Directory where GTF files are stored <br/>
 
 
 #### Builds the empty chain
