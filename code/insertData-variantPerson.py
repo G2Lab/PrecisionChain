@@ -30,6 +30,7 @@ import warnings
 import random
 import itertools
 from io import BytesIO
+from itertools import islice
 warnings.simplefilter("ignore")
 
 
