@@ -114,7 +114,8 @@ def extractPersonVariants(file, sample_id):
         sample_id: id of the sample being added
     '''
     ##BCFtools request (CHANGE FROM JUST TAKING THE HEAD)
-    request = 'bcftools view -e \'GT="RR"\' -s {}  -H  {}'.format(sample_id, file)
+    filter_stmt = '''awk '{if($10 != "0|0") { print } }' '''
+    request = f'''bcftools view -s {sample_id}  -H  {file}| {filter_stmt} '''
     output = subprocess.check_output(request, shell = True)
     ##extract the data from the output
     df = pd.read_csv(BytesIO(output), sep='\t', usecols = [0,1,3,4,9], names= ['chrom', 'pos', 'ref', 'alt', 'gt'], index_col = 'pos')
