@@ -260,11 +260,10 @@ def queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id):
 
         except:
             pass
-    person_variants_df.drop_duplicates(inplace = True)
-    
+    deduped_persons = person_variants_df[~person_variants_df.index.duplicated(keep='last')]    
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     
-    return person_variants_df
+    return deduped_persons
 
 
 # In[9]:
