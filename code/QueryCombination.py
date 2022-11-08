@@ -289,7 +289,8 @@ def queryMAFVariantGene(chainName, multichainLoc, datadir, chrom, inputRange):
             gene_df['gt'] = variant[1]
             gene_df['person_ids'] = [person_ids for _ in range(len(gene_df))]
             results.append(gene_df)
-            print(gene_df)
+            # Avoid printing for now
+            # print(gene_df)
         except:
             pass
     return results
@@ -482,7 +483,8 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
         variants_df_filtered = variants_df[(variants_df['MAF'] >= numericRanges[0]) & (variants_df['MAF'] <= numericRanges[1])]
     else:
         variants_df_filtered = variants_df
-    print(variants_df_filtered)
+    # Avoid printing for now
+    #print(variants_df_filtered)
     return variants_df_filtered
 
 # ## Variant to clinical queries
