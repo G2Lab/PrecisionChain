@@ -278,11 +278,18 @@ def extractAllPosition(chainName, multichainLoc, datadir, chrom):
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants chrom_{}'.format(chainName, datadir, chrom)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
+    if matches and matches[0]['data'].get('txid'):
+        return get_json_payload_from_txid(matches[0]['data'].get('txid'), chainName, datadir)
     return matches[0]['data']['json']
 
 
 # In[61]:
 
+
+def get_json_payload_from_txid(txid, chainName, datadir):
+    queryCommand = 'multichain-cli {} -datadir={} gettxoutdata {} 0'.format(chainName, datadir, txid)
+    items = subprocess.check_output(queryCommand.split())
+    return items
 
 def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos):
     '''
