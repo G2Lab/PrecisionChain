@@ -19,7 +19,6 @@ import argparse
 import subprocess
 from subprocess import Popen, PIPE
 import os
-import psutil
 import time
 import multiprocessing
 import glob
@@ -29,6 +28,7 @@ import json
 import warnings
 import random
 import itertools
+import psutil
 from io import BytesIO, StringIO
 warnings.simplefilter("ignore")
 
@@ -76,7 +76,7 @@ def loadFilePaths(dataPath, variantFiles):
         files = str.split(variantFiles.replace(" ",""), ',')
     paths = []    
     for file in files:
-        filePath= f'{dataPath}/chr{file}.vcf.gz'
+        filePath= f'{dataPath}/chr_{file}.vcf.gz'
         paths.append(filePath)
     random.shuffle(paths)
     return paths
@@ -126,13 +126,13 @@ def extractPositions(variantFile):
     output = subprocess.check_output(request, shell = True)
     positions = [output.decode('utf-8').split('\n')[0]]
     
-    #get every 3rd position (MUST CHANGE IN FULL IMPLEMENTATION, CURRENTLY USING HEAD TO SPEED UP TESTING)
-    request = "bcftools query -f \'%POS\n\' {} | awk \'NR % 1000 == 0\'".format(variantFile)
+    #get every 100th positions
+    request = "bcftools query -f \'%POS\n\' {} | awk \'NR % 100 == 0\'".format(variantFile)
     output = subprocess.check_output(request, shell = True)
     positions.extend(output.decode('utf-8').split('\n'))
     
     #chunk the data to be uploaded
-    positions_split = np.array_split(positions, 10)
+    positions_split = np.array_split(positions, 5)
     pos_regions = {}
     
     #create file that links together the chunked regions
@@ -401,7 +401,8 @@ def publishPositions(chainName, multichainLoc, datadir, positions, chrom):
 # In[249]:
 
 
-def publishVariants(chainName, multichainLoc, datadir, mappingFile, variantFiles):
+def publishVariants(fields):
+    chainName, multichainLoc, datadir, mappingFile, variantFiles = fields
     '''
     Publish the variant data
     Input:
@@ -429,10 +430,10 @@ def publishVariants(chainName, multichainLoc, datadir, mappingFile, variantFiles
         publishMAF(chainName, multichainLoc, datadir, MAF, chrom)
         ##publish mapping of positions added
         publishPositions(chainName, multichainLoc, datadir, positions, chrom)
+
+        print('Inserted {}'.format(variantFile))
+
     return
-
-
-# In[ ]:
 
 
 def main():
@@ -457,23 +458,14 @@ def main():
         paths = loadFilePaths(args.dataPath, args.variantfile)
         cpu = min(cpu, len(paths))
         paths_split = np.array_split(paths, cpu)
-        processes = []
-        for i in range(cpu):
-            paths_split_ins = paths_split[i]
-            p_ins = multiprocessing.Process(target=publishVariants, args = (args.chainName, args.multichainLoc,
-                                                                                     args.datadir, args.mappingfile, paths_split_ins))
-            processes.append(p_ins)
-            p_ins.start()
-            
-            
-        for process in processes:
-            process.join()
-            
-            print('Inserted {}'.format(paths_split_ins))
-            end = time.time()
-            e = int(end - start)
-            print('\n\n Time elapsed:\n\n')
-            print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
+        arguments = []
+        for paths_split_ins in paths_split:
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, args.mappingfile, paths_split_ins))
+        pool = multiprocessing.Pool(cpu)
+        pool.map(publishVariants, arguments)
+        pool.close()
+        pool.join()
+        
 
         
         end = time.time()

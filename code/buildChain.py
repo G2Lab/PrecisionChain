@@ -84,7 +84,7 @@ def main():
         #make a chain
         print("--CHAIN CREATION--")
         createChain(args.chainName, args.multichainLoc, args.datadir)
-        createStream(args.chainName, args.multichainLoc, args.datadir
+        createStream(args.chainName, args.multichainLoc, args.datadir)
         print("Chain construction complete! Chain name: "+args.chainName)
         end = time.time()
 

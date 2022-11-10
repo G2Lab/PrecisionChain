@@ -70,11 +70,6 @@ def extractVariantGenes(chainName, multichainLoc, datadir, variant, chrom):
     return None
     
     
-
-
-# In[542]:
-
-
 def exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom):
     '''
     For the extracted gene, get its information e.g. function, type etc.
@@ -92,7 +87,7 @@ def exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom):
     
     ##wrangle the data json object and the keys object to a DF
     df = pd.DataFrame(matches)[['keys', 'data']]
-    keys = pd.DataFrame(df["keys"].to_list(), columns=['gene_id', 'feature'])
+    keys = pd.DataFrame(df["keys"].to_list(), columns=['gene_id', 'name', 'feature'])
 
     def createrow(row):
         return pd.Series(row['data']['json'])
@@ -192,23 +187,31 @@ def MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRange
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     MAF_variants = matches[0]['data']['json']
-    MAF_variants = json.loads(MAF_variants.replace("(",'"(').replace(")",')"'))
+    try:
+        MAF_variants = json.loads(MAF_variants.replace("(",'"(').replace(")",')"'))
+    except:
+        MAF_variants = MAF_variants.replace("[", '(').replace("]",")").replace('A', '"A"').replace('C', '"C"').replace('G', '"G"').replace('T', '"T"').replace('0|0', '"0|0"').replace('1|0', '"1|0"'
+                                    ).replace('1|1', '"1|1"').replace('2|0', '"2|0"').replace('2|2', '"2|2"').replace('2|1', '"2|1"').replace('3|0', '"3|0"').replace('3|1', '"3|1"').replace(
+                                        '3|2', '"3|2"').replace('3|3', '"3|3"')
+        MAF_variants = eval(MAF_variants)
     ##create DF from returned values and filter only for those within actual numeric range
     MAF_df = pd.DataFrame.from_dict(MAF_variants, orient = 'index', columns = ['MAF'])
     MAF_df = MAF_df[(MAF_df['MAF'] >= numericRange[0]) & (MAF_df['MAF'] <= numericRange[1])]
     MAF_df.reset_index(inplace = True)
     ##function to parse the returned JSON object with variant information
     def parseVariantInfo(row):
-        info = row[0].replace(' ','').replace('(','').replace(')','').split(',')
-        if info[3].isalpha() == True:
-            pos, ref, alt, gt = info[0], info[1], info[2:4], info[4:]
-        else:
-            pos, ref, alt, gt = info[0], info[1], info[2], info[3:]
+        try:
+            info = row[0].replace(' ','').replace('(','').replace(')','').split(',')
+            pos, ref, alt, gt = info[0], info[1], info[2:-1], info[-1]
+        except:
+            info = row[0]
+            pos, ref, alt, gt = info[0], info[1], info[2:-1], info[-1]
         return [pos, ref, alt, gt, row['MAF']]
     ##loop through the df and parse through every entry to create cleaned df
     if not MAF_df.empty:
         MAF_parsed = MAF_df.apply(parseVariantInfo, axis = 1)
         MAF_parsed_df = pd.DataFrame(np.vstack(MAF_parsed), columns = ['pos','ref','alt','gt','maf'])
+        publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
         return MAF_parsed_df
     
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
@@ -243,7 +246,7 @@ def extractMAFPersonIDs(chainName, multichainLoc, datadir, chrom, inputRange):
         inputRange - the MAF range user has inputted
     '''
     ##extract the variants within MAF range
-    MAF_df = MAFqueries(chainName, multichainLoc, datadir, chrom, '0.01-0.1')
+    MAF_df = MAFqueries(chainName, multichainLoc, datadir, chrom, inputRange)
     variant_dict = {}
     ##loop through each variant and search the variant stream for the person IDs that have that variant
     for _ , row in MAF_df.iterrows():
@@ -256,6 +259,7 @@ def extractMAFPersonIDs(chainName, multichainLoc, datadir, chrom, inputRange):
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
         variant_dict[(pos, gt)] = matches[0]['data']['json']
+
     return variant_dict
 
 
@@ -280,6 +284,7 @@ def queryMAFVariantGene(chainName, multichainLoc, datadir, chrom, inputRange):
             print(gene_df)
         except:
             pass
+
 
 
 # ## disease -> gene -> variant

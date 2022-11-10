@@ -75,7 +75,7 @@ def loadFilePaths(dataPath, variantFiles):
         files = str.split(files.replace(" ",""), ',')
     paths = []    
     for file in files:
-        filePath= f'{dataPath}/chr{file}.vcf.gz'
+        filePath= f'{dataPath}/chr_{file}.vcf.gz'
         paths.append(filePath)
     random.shuffle(paths)
     return paths
@@ -125,13 +125,14 @@ def extractPersonVariants(file, sample_id):
     df.index = df.index.map(str)
     try:
         #streamname
-        chrom = df.chrom.iloc[0]
+        chrom = df['chrom'].iloc[0]
         #remove homoz genotypes
         df = df[df['gt'] != '0|0']
         #dict format to add
         values = df[['ref','alt', 'gt']].T.to_dict(orient = 'list')
         return chrom, values
     except:
+        chrom = file.split('/')[-1].split('.')[0]
         chrom, False
 
 
@@ -153,7 +154,6 @@ def chunkDictionary(values_dict, SIZE=2000):
     for i, chunk in enumerate(chunks(values_dict, SIZE = 2000)):
         split_variants[i] = chunk
     return split_variants
-
 
 # In[27]:
 
@@ -205,7 +205,8 @@ def publishMappingPerson(chainName, multichainLoc, datadir, samples):
 # In[29]:
 
 
-def publishToDataStreams(chainName, multichainLoc, datadir, mappingFile, paths):
+def publishToDataStreams(fields):
+    chainName, multichainLoc, datadir, mappingFile, paths = fields
     '''
     loop through all samples and add to multichain
     Input:
@@ -228,6 +229,9 @@ def publishToDataStreams(chainName, multichainLoc, datadir, mappingFile, paths):
                     publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
             else:
                 pass
+                    
+        print('Inserted {}'.format(variantFile))
+
     return
 
 
@@ -252,25 +256,15 @@ def main():
         
         paths = loadFilePaths(args.dataPath, args.variantfile)
         paths_split = np.array_split(paths, cpu)
-        processes = []
-        for i in range(cpu):
-            paths_split_ins = paths_split[i]
-            p_ins = multiprocessing.Process(target=publishToDataStreams, args = (args.chainName, args.multichainLoc,
-                                                                                     args.datadir, args.mappingfile, paths_split_ins))
-            processes.append(p_ins)
-            p_ins.start()
-            
-            
-        for process in processes:
-            process.join()
-            
-            print('Inserted {}'.format(paths_split_ins))
-            end = time.time()
-            e = int(end - start)
-            print('\n\n Time elapsed:\n\n')
-            print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
+        arguments = []
+        for paths_split_ins in paths_split:
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, args.mappingfile, paths_split_ins))
+        pool = multiprocessing.Pool(cpu)
+        pool.map(publishToDataStreams, arguments)
+        pool.close()
+        pool.join()
 
-        
+
         end = time.time()
         e = int(end - start)
         print('\n\n Time elapsed:\n\n')

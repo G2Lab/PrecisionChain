@@ -76,7 +76,7 @@ def loadFilePaths(genePath, geneFiles, variantPath):
     variantPaths = [] 
     genePaths = []
     for file in files:
-        variantPath_ = f'{variantPath}/chr{file}.vcf.gz'
+        variantPath_ = f'{variantPath}/chr_{file}.vcf.gz'
         variantPaths.append(variantPath_)
         gene = '{}/gtf_chr{}.txt'.format(genePath, file)
         genePaths.append(gene)
