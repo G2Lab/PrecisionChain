@@ -533,7 +533,6 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
     '''
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, person_ids)
     data = {}
-    searchKeys = searchKeys.split(',')
     for person_id in person_streams.keys():
         queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamkeyitems person_stream_{} {}'.format(chainName, datadir,
                                                                                 person_streams[person_id], person_id)
@@ -544,11 +543,11 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
             if ('all' in searchKeys) | (key in searchKeys): 
                 value = match['data']['json']
                 d = pd.DataFrame.from_dict(value, orient = 'index').T
-                if searchKey in data:
-                    data[searchKey] = pd.concat([data[searchKey],d])
+                if key in data:
+                    data[key] = pd.concat([data[key],d])
                 else:
-                    data[searchKey] = pd.DataFrame()
-                    data[searchKey] = pd.concat([data[searchKey],d])
+                    data[key] = pd.DataFrame()
+                    data[key] = pd.concat([data[key],d])
     
     for key in data:
         print(data[key])
@@ -562,6 +561,7 @@ def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, chrom, v
     '''
     ##extract person_ids
     persons_gt = extractVariantPersonIDs(chainName, datadir, chrom, variant)
+    searchKeys = searchKeys.split(',')
     ##filter for gt of interest
     for key in persons_gt:
         if key[1] == gt:
