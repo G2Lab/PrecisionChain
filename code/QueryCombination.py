@@ -364,6 +364,7 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
         variant - position of the variant
         gt - geneotype e.g. 1|0, 0|0
     '''
+
     ##Search mapping stream for all the samples added to the chain
     queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants samples'.format(chainName, datadir)
 
@@ -417,6 +418,7 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
         gene - gene_id of gene of interest
         chrom - chromosome of variant
     '''
+
     ##extract personIDs for cohort and variants associated with the gene of interest
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
     variants = extractGeneVaraints(chainName, multichainLoc, datadir, gene, chrom)
@@ -429,7 +431,7 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
         variants_person = matches[0]['data']['json']
-        for variant in variants:
+        for variant in variants_person:
             try:
                 gt = variants_person[variant][-1]
             except:
@@ -443,6 +445,7 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
                 ##for each variant, calculate the MAF and also add this to the dictionary
                 MAF = calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt)
                 variants_dict[key]['MAF'] = MAF
+
     
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     
