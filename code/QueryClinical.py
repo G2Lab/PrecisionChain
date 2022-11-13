@@ -92,8 +92,12 @@ def extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys):
 # In[ ]:
 
 
-def extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys):
-    person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
+def extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person = False):
+    if not person:
+        person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
+    else:
+        person_ids = cohortKeys
+    
     person_streams = {}
     for person_id in person_ids:
         queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_person {}'.format(chainName, datadir, person_id)
@@ -156,8 +160,8 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
 # In[ ]:
 
 
-def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
-    person_streams = extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys)
+def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person):
+    person_streams = extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person)
     for person_id in person_streams.keys():
         queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_stream_{} {}'.format(chainName, datadir,
                                                                                     person_streams[person_id], person_id)
@@ -168,19 +172,45 @@ def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys
     return
 
 
+def queryPersonStreamSpecific(chainName, multichainLoc, datadir, person_ids, searchKeys):
+    person_streams = extractPersonStreams(chainName, multichainLoc, datadir, person_ids, person=True)
+    for person_id in person_streams.keys():
+        for searchKey in searchKeys:
+            queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamqueryitems person_stream_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
+                                                                                    person_streams[person_id], person_id, searchKey)
+            items = subprocess.check_output(queryCommand.split())
+            matches = json.loads(items, parse_int= int)
+            print(matches)
+            publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    return
+
+
 # In[ ]:
 
 
-def query(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
+def domainQuery(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
     
     cohortKeys, searchKeys = parseKeys(cohortKeys, searchKeys)
     if searchKeys[0] == 'demographics':
         queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
     elif searchKeys[0] == 'all' :
-        queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
+        queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person = False)
     else:
         queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
-       
+    return
+
+
+def personQuery(chainName, multichainLoc, datadir, person_ids, searchKeys):
+    
+    person_ids, searchKeys = parseKeys(person_ids, searchKeys)
+    cohortKeys = person_ids
+    person = True
+    if searchKeys[0] == 'demographics':
+        queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
+    elif searchKeys[0] == 'all' :
+        queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person)
+    else:
+        queryPersonStreamSpecific(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
 
 
 # ## audit log
@@ -219,18 +249,24 @@ def publishToAuditstream(chainName, multichainLoc, datadir, queryCommand):
 
 def main():
     parser = argparse.ArgumentParser()
+    action_choices = ['domain', 'person']
+    parser.add_argument('--view', choices=action_choices)
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
-    parser.add_argument("-ck", "--cohortKeys", help = "concepts to build cohort from e.g. diagnosis code")
+    parser.add_argument("-ck", "--cohortKeys", required=(action_choices[0] in sys.argv), help = "concepts to build cohort from e.g. diagnosis code")
     parser.add_argument("-sk", "--searchKeys", type = str, help = "concepts/domain to search for cohort e.g. drugs taken")
+    parser.add_argument("-pi", "--person_ids",required=(action_choices[1] in sys.argv), type = str, help = "concepts/domain to search for cohort e.g. drugs taken")
     args = parser.parse_args()
 
     start = time.time()
     try:
         print("--QUERYING--")
         subscribeToStream(args.chainName, args.multichainLoc, args.datadir)
-        query(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.searchKeys)
+        if args.view == action_choices[0]:
+            domainQuery(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.searchKeys)
+        else:
+            personQuery(args.chainName, args.multichainLoc, args.datadir, args.person_ids, args.searchKeys)
         
         end = time.time()
         
@@ -238,7 +274,6 @@ def main():
         print('\n\n Time elapsed:\n\n')
         print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
 
-    
     except:
         sys.stderr.write("\nERROR: Failed querying. Please try again.\n")
         quit()

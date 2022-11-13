@@ -476,6 +476,114 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
     print(variants_df_filtered)
     return variants_df_filtered
 
+# ## Variant to clinical queries
+def extractVariantPersonIDs(chainName, datadir, chrom, variant):
+    '''
+    Get the IDs of patients with specific variant
+    '''
+    variant_dict = {}
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {} false 9999999999999999'.format(chainName, datadir, chrom, variant)
+    items = subprocess.check_output(queryCommand.split())
+    matches = json.loads(items, parse_int= int)
+    persons_gt = {}
+    for match in matches:
+        pos, gt = match['keys'][0], match['keys'][3]
+        persons_gt[(pos, gt)] =  match['data']['json']
+    return persons_gt
+
+def queryDemographics(chainName, multichainLoc, datadir, person_ids):
+    '''
+    Get demographic data of returned patients
+    '''
+    ##check if search from running query or person specific query
+    if isinstance(person_ids,str):
+        personids = [int(id) for id in cohortKeys.split(',')]
+    else:
+        personids = person_ids
+    persons_df = pd.DataFrame()
+    
+    for personid in personids:
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
+        items = subprocess.check_output(queryCommand.split())
+        json_item = json.loads(items, parse_int= int)[0]['data']['json']
+        person_df = pd.DataFrame.from_dict(json_item, orient = 'index').T
+        persons_df = pd.concat([persons_df,person_df])
+    persons_df.set_index('person_id', inplace = True)
+    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    persons_json = persons_df.to_json(orient = 'index')
+    print(persons_json)
+    return persons_json
+
+
+def extractPersonStreams(chainName, multichainLoc, datadir, person_ids):
+    '''
+    Get the perso stream that patients are stored in
+    '''
+    person_streams = {}
+    for person_id in person_ids:
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_person {}'.format(chainName, datadir, person_id)
+        items = subprocess.check_output(queryCommand.split())
+        matches = json.loads(items, parse_int= int) 
+        person_streams[person_id] = matches[0]['data']['json']
+    return person_streams
+
+def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys):
+    '''
+    Get the clinical data for patients with variant
+    '''
+    person_streams = extractPersonStreams(chainName, multichainLoc, datadir, person_ids)
+    data = {}
+    if searchKeys != 'all':
+        for searchKey in searchKeys:
+            data[searchKey] = pd.DataFrame()
+            for person_id in person_streams.keys():
+                queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamqueryitems person_stream_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
+                                                                                        person_streams[person_id], person_id, searchKey)
+                items = subprocess.check_output(queryCommand.split())
+                matches = json.loads(items, parse_int= int)
+                for match in matches:
+                    value = match['data']['json']
+                    d = pd.DataFrame.from_dict(value, orient = 'index').T
+                    data[searchKey] = pd.concat([data[searchKey],d])
+    else:
+        for person_id in person_streams.keys():
+            queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamkeyitems person_stream_{} {}'.format(chainName, datadir,
+                                                                                    person_streams[person_id], person_id)
+            items = subprocess.check_output(queryCommand.split())
+            matches = json.loads(items, parse_int= int)
+            for match in matches:
+                searchKey = match['keys'][0]
+                value = match['data']['json']
+                d = pd.DataFrame.from_dict(value, orient = 'index').T
+                if searchKey in data:
+                    data[searchKey] = pd.concat([data[searchKey],d])
+                else:
+                    data[searchKey] = pd.DataFrame()
+                    data[searchKey] = pd.concat([data[searchKey],d])
+    
+    for key in data:
+        print(data[key])
+        
+    return data
+
+def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, chrom, variant, gt):
+    '''
+    Overall query takes variant of interest (position and gt) and returns specific clinical data on patients with variant
+    Note only 1 variant per search
+    '''
+    ##extract person_ids
+    persons_gt = extractVariantPersonIDs(chainName, datadir, chrom, variant)
+    ##filter for gt of interest
+    for key in persons_gt:
+        if key[1] == gt:
+            person_ids = persons_gt[key]
+    ##get the info of interest
+    if searchKeys[0] == 'demographics':
+        data = queryDemographics(chainName, multichainLoc, datadir, person_ids)
+    else:
+        data = queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys)
+
+    return
 
 # ## log queries
 
@@ -522,9 +630,12 @@ def main():
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
     parser.add_argument("-ch", "--chromosome", help = "chromosome to search")
     parser.add_argument("-ps", "--positions",required=(action_choices[0] in sys.argv), help = "variant positions to search")
+    parser.add_argument("-gt", "--genotype",required=(action_choices[0] in sys.argv), help = "genotype to search")
+    parser.add_argument("-sk", "--searchKeys", required=(action_choices[0] in sys.argv), help = "OMOP keys to extract clinical data")
     parser.add_argument("-gn", "--gene", required=(action_choices[1:4:2] in sys.argv), help = "genes to search")
     parser.add_argument("-ir", "--inputRange", required=(action_choices[2:4] in sys.argv), help = "MAF range to search", default = "")
     parser.add_argument("-ck", "--cohortKeys", required=(action_choices[3] in sys.argv), help = "OMOP keys to define cohort by")
+    
     
 
     args = parser.parse_args()
@@ -532,7 +643,7 @@ def main():
     try:
         subscribeToStream(args.chainName, args.multichainLoc, args.datadir)
         if args.query == action_choices[0]:
-            queryVariantGene(args.chainName, args.multichainLoc, args.datadir, args.positions, args.chromosome)
+            queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.chromosome, args.positions, args.genotype)
         
         elif args.query == action_choices[1]:
             extractGeneVaraints(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
