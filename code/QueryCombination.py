@@ -541,7 +541,7 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
         matches = json.loads(items, parse_int= int)
         for match in matches:
             key = match['keys'][0]
-            if ('all' in searchKeys[0]) | (key in searchKeys): 
+            if ('all' in searchKeys) | (key in searchKeys): 
                 value = match['data']['json']
                 d = pd.DataFrame.from_dict(value, orient = 'index').T
                 if searchKey in data:
