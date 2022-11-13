@@ -80,7 +80,7 @@ def exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom):
         chrom - which chromosome the variant is on
     '''
     ##Multichain query
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems gene_chrom_{} {}'.format(chainName, datadir,
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems gene_chrom_{} {} false 9999999999'.format(chainName, datadir,
                                                                                                      chrom, gene)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
@@ -634,9 +634,11 @@ def main():
         if args.query == action_choices[0]:
             queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.chromosome, args.positions, args.genotype)
         
+        ##deprecated
         elif args.query == action_choices[1]:
             extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
         
+        ##deprecated
         elif args.query== action_choices[2]:
             queryMAFVariantGene(args.chainName, args.multichainLoc, args.datadir, args.chromosome, args.inputRange)
         

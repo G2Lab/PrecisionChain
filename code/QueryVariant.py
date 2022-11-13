@@ -93,8 +93,75 @@ def homozgyousPersons(chainName, multichainLoc, datadir, chrom, variant):
     return homozygous
 
 
-# In[5]:
+def extractVariantGenes(chainName, multichainLoc, datadir, variant, chrom):
+    '''
+    For a given variant position, extract the gene associated with it
+    Inputs:
+        variant - position of the variant of interest
+        chrom - which chromosome the variant is on
+    '''
+    ##Multichain query
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems gene_variant_chrom_{} {}'.format(chainName, datadir,
+                                                                                                     chrom, variant)
+    items = subprocess.check_output(queryCommand.split())
+    matches = json.loads(items, parse_int= int)
+    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    ##Extract gene id from the query
+    if matches != []:
+        gene = matches[0]['keys'][1]
+        return gene
+    return None
 
+def extractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom):
+    '''
+    For the extracted gene, get its information e.g. function, type etc.
+    As GTF has multiple genes under the same ID (depending on the source), filter for Genes that actually contain variant
+    Inputs:
+        gene - gene of interest (extracted using extractVariantGenes)
+        variant - position of the variant of interest
+        chrom - which chromosome the variant is on
+    '''
+    ##Multichain query
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems gene_chrom_{} {} false 9999999999'.format(chainName, datadir,
+                                                                                                     chrom, gene)
+    items = subprocess.check_output(queryCommand.split())
+    matches = json.loads(items, parse_int= int)
+    ##wrangle the data json object and the keys object to a DF
+    df = pd.DataFrame(matches)[['keys', 'data']]
+    keys = pd.DataFrame(df["keys"].to_list(), columns=['gene_id', 'name', 'feature'])
+    def createrow(row):
+        return pd.Series(row['data']['json'])
+    
+    gene_info = df.apply(createrow, axis =1)
+    gene_df = keys.merge(gene_info, left_index = True, right_index=True)
+    ##filter the genes that actually contain the variant (needed as multiple genes have same ID depending on sequencing source)
+    gene_df_filtered = gene_df[(gene_df['start'] <= int(variant)) & (gene_df['end'] >= int(variant))]
+    gene_df_filtered['variant'] = variant
+    
+    return gene_df_filtered
+
+def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
+    '''
+    Full query that takes in variants of interest and extracts gene information
+    Inputs:
+        variant - position of the variant of interest
+        chrom - which chromosome the variant is on
+    '''
+    gene_data = pd.DataFrame()
+    for variant in variants:
+        gene = extractVariantGenes(chainName, multichainLoc, datadir, variant, chrom)
+        if gene:
+            gene_info = extractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom)
+            gene_info = gene_info.iloc[0:1]
+            
+        else:
+            gene_info = pd.DataFrame(columns = ['gene_id', 'name', 'feature', 'start', 'end', 'gene_type', 'strand','variant'], 
+                                data = np.array([('None', 'None', 'NA', 'NA', 'NA', 'NA','NA', variant)]))
+        gene_data = pd.concat([gene_data, gene_info])
+    return gene_data
+
+
+# In[5]:
 
 def queryVariant(chainName, multichainLoc, datadir, chrom, variant, genotype):
     '''
@@ -134,8 +201,17 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype):
     variants_dict = {}
     for variant in variants:
         variants_dict[variant] = queryVariant(chainName, multichainLoc, datadir, chrom, variant, genotype)
-    print(variants_dict)
-    return variants_dict
+    #get gene info
+    gene_df = queryVariantGene(chainName, multichainLoc, datadir, variants, chrom)
+    ##merge gene info and person variant info
+    variants_df = pd.DataFrame.from_dict(variants_dict, orient = 'index')
+    variants_df = variants_df.merge(gene_df, left_index = True, right_on = 'variant')
+    ##make into json (similar format)
+    variants_df.set_index('variant', inplace = True)
+    variants_json = variants_df.to_json(orient = 'index')
+
+    print(variants_json)
+    return variants_json
         
 
 
@@ -328,6 +404,28 @@ def MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRange
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
         return MAF_parsed_df
 
+# ## variant-gene queries
+
+def extractGeneVariants(chainName, multichainLoc, datadir, gene, chrom):
+    '''
+    Given a gene of interest, extract all variant positions associated with it
+    Inputs:
+        gene - gene_id of gene of interest
+        chrom - which chromosome the gene is on
+    '''
+    ##multichain command
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems gene_variant_chrom_{} {} false 999'.format(chainName, datadir,
+                                                                                                     chrom, gene)
+    items = subprocess.check_output(queryCommand.split())
+    matches = json.loads(items, parse_int= int)
+    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    ##parse returned json object to get the matches (will be multiple)
+    if matches != []:
+        variants = [match['keys'][0] for match in matches]
+        return variants
+    return None
+
+
 # ## log queries
 
 # In[ ]:
@@ -366,7 +464,7 @@ def publishToAuditstream(chainName, multichainLoc, datadir, queryCommand):
 
 def main():
     parser = argparse.ArgumentParser()
-    action_choices = ['variant', 'person', 'maf']
+    action_choices = ['variant', 'person', 'gene', 'maf']
     parser.add_argument('--view', choices=action_choices)
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
@@ -375,7 +473,8 @@ def main():
     parser.add_argument("-ps", "--positions",required=(action_choices[0:2] in sys.argv), help = "positions to search", default = "all")
     parser.add_argument("-gt", "--genotypes", required=(action_choices[0] in sys.argv), help = "genotypes to search")
     parser.add_argument("-pi", "--person_ids", required=(action_choices[1] in sys.argv), help = "person_ids to search")
-    parser.add_argument("-ir", "--inputRange", required=(action_choices[2] in sys.argv), help = "MAF range to search")
+    parser.add_argument("-gn", "--gene", required=(action_choices[2] in sys.argv), help = "genes to search")
+    parser.add_argument("-ir", "--inputRange", required=(action_choices[3] in sys.argv), help = "MAF range to search")
 
     args = parser.parse_args()
     start = time.time()
@@ -388,6 +487,9 @@ def main():
             queryPersonsChroms(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.person_ids, args.positions)
         
         elif args.view == action_choices[2]:
+             extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosomes)
+
+        elif args.view == action_choices[3]:
             MAFqueries(args.chainName, args.datadir, args.chromosomes, args.inputRange)
         
         end = time.time()
