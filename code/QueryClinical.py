@@ -54,7 +54,7 @@ def subscribeToStream(chainName, multichainLoc, datadir):
 def queryMappingStream(chainName, multichainLoc, datadir, keys):
     concepts = []
     for key in keys: 
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_clinical {}'.format(chainName, datadir, key)
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_clinical {} false 999'.format(chainName, datadir, key)
         items = subprocess.check_output(queryCommand.split())
         info = tuple(json.loads(items, parse_int= int)[0]['keys'])
         concepts.append(info)
@@ -78,7 +78,7 @@ def extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys):
     matches = []
     for bucket in concept_bucket:
         ##potentially change to liststreamkeyitems
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {}'.format(chainName, datadir,
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {} false 999'.format(chainName, datadir,
                                                                                                                concept_domain, concept_stream,
                                                                                                                bucket+1, cohortKeys[0])
         items = subprocess.check_output(queryCommand.split())
@@ -100,7 +100,7 @@ def extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person =
     
     person_streams = {}
     for person_id in person_ids:
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_person {}'.format(chainName, datadir, person_id)
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_person {} false 999'.format(chainName, datadir, person_id)
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int) 
         person_streams[person_id] = matches[0]['data']['json']
@@ -120,7 +120,7 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
     persons_df = pd.DataFrame()
     
     for personid in personids:
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {} false 999'.format(chainName, datadir, personid)
         items = subprocess.check_output(queryCommand.split())
         json_item = json.loads(items, parse_int= int)[1]['data']['json']
         person_df = pd.DataFrame.from_dict(json_item, orient = 'index').T
@@ -149,7 +149,7 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
         for bucket in buckets:
             ##loop through patients to ensure only querying data of patients of interest
             for person_id in person_ids:
-                    queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {}'.format(chainName, datadir,
+                    queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {} false 999'.format(chainName, datadir,
                                                                                                 stream[1], stream[2], bucket+1, person_id)
                     items = subprocess.check_output(queryCommand.split())
                     matches = json.loads(items, parse_int= int)
@@ -163,7 +163,7 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
 def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person):
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person)
     for person_id in person_streams.keys():
-        queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_stream_{} {}'.format(chainName, datadir,
+        queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_stream_{} {} false 999'.format(chainName, datadir,
                                                                                     person_streams[person_id], person_id)
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
@@ -176,7 +176,7 @@ def queryPersonStreamSpecific(chainName, multichainLoc, datadir, person_ids, sea
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, person_ids, person=True)
     for person_id in person_streams.keys():
         for searchKey in searchKeys:
-            queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamqueryitems person_stream_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
+            queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamqueryitems person_stream_{} {{"keys":["{}","{}"]}} false 999'.format(chainName, datadir,
                                                                                     person_streams[person_id], person_id, searchKey)
             items = subprocess.check_output(queryCommand.split())
             matches = json.loads(items, parse_int= int)

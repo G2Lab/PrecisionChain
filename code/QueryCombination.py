@@ -126,7 +126,7 @@ def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
 # In[544]:
 
 
-def extractGeneVaraints(chainName, multichainLoc, datadir, gene, chrom):
+def extractGeneVariants(chainName, multichainLoc, datadir, gene, chrom):
     '''
     Given a gene of interest, extract all variant positions associated with it
     Inputs:
@@ -409,7 +409,6 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
 
 # In[554]:
 
-
 def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene, chrom):
     '''
     Given the gene of interest and clinical cohort definition, get the variants of those patients in that gene
@@ -421,19 +420,21 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
 
     ##extract personIDs for cohort and variants associated with the gene of interest
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
-    variants = extractGeneVaraints(chainName, multichainLoc, datadir, gene, chrom)
+    variants = extractGeneVariants(chainName, multichainLoc, datadir, gene, chrom)
+
     ##build dictionary that loops through the personIDs and variants and extracts the patients alleles i.e. what genotype do they hold in that position
     variants_dict = {}
     for person_id in person_ids:
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_chrom_{} {}'.format(chainName, datadir,
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_chrom_{} {} false 999999'.format(chainName, datadir,
                                                                                                         chrom, person_id)
 
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
         variants_person = matches[0]['data']['json']
-        for variant in variants_person:
+        variants_person_filtered = {k:v for k,v in variants_person.items() if k in variants}
+        for variant in variants_person_filtered:
             try:
-                gt = variants_person[variant][-1]
+                gt = variants_person_filtered[variant][-1]
             except:
                 ##if patient has no variant stored here it must be 0|0 which is not stored on chain
                 gt = '0|0'
@@ -450,7 +451,6 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     
     return variants_dict
-
 
 # In[556]:
 
@@ -534,7 +534,7 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, person_ids)
     data = {}
     for person_id in person_streams.keys():
-        queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamkeyitems person_stream_{} {}'.format(chainName, datadir,
+        queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamkeyitems person_stream_{} {} false 150'.format(chainName, datadir,
                                                                                 person_streams[person_id], person_id)
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
@@ -635,7 +635,7 @@ def main():
             queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.chromosome, args.positions, args.genotype)
         
         elif args.query == action_choices[1]:
-            extractGeneVaraints(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
+            extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
         
         elif args.query== action_choices[2]:
             queryMAFVariantGene(args.chainName, args.multichainLoc, args.datadir, args.chromosome, args.inputRange)
