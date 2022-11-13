@@ -128,12 +128,18 @@ def extractPersonVariants(file, sample_id):
         chrom = df['chrom'].iloc[0]
         #remove homoz genotypes
         df = df[df['gt'] != '0|0']
+        ##reorder the genotypes
+        def gt_parser(row):
+            if int(row['gt'][0]) < int(row['gt'][2]):
+                row['gt'] = f"{row['gt'][2]}|{row['gt'][0]}"
+            return row
+        df = df.apply(gt_parser, axis = 1)
         #dict format to add
         values = df[['ref','alt', 'gt']].T.to_dict(orient = 'list')
         return chrom, values
     except:
         chrom = file.split('/')[-1].split('.')[0]
-        chrom, False
+        chrom, Falsex
 
 
 # In[26]:
@@ -278,7 +284,6 @@ def main():
         print(e)
         sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
         quit()
-        
 
 if __name__ == "__main__":
     main()

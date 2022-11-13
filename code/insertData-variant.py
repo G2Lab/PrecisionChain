@@ -130,9 +130,11 @@ def extractPositions(variantFile):
     request = "bcftools query -f \'%POS\n\' {} | awk \'NR % 100 == 0\'".format(variantFile)
     output = subprocess.check_output(request, shell = True)
     positions.extend(output.decode('utf-8').split('\n'))
+
     
     #chunk the data to be uploaded
-    positions_split = np.array_split(positions, 5)
+    s = 5
+    positions_split = np.array_split(positions, s)
     pos_regions = {}
     
     #create file that links together the chunked regions
@@ -140,6 +142,14 @@ def extractPositions(variantFile):
     for i, split in enumerate(positions_split):
         pos_regions[i] = [last, split[-1]]
         last = split[-1]
+    
+    
+    #get last position
+    request = 'bcftools query -f \'%POS\n\' {} | tail -n 1'.format(variantFile)
+    output = subprocess.check_output(request, shell = True)
+    last = output.decode('utf-8').split('\n')[0]
+    pos_regions[s-1][-1] = last
+   
     return (chrom, pos_regions)
 
 
@@ -422,7 +432,7 @@ def publishVariants(fields):
         prevMAF_df = extractPreviousMAF(chainName, multichainLoc, datadir, chrom)
         ##store all positions
         positions = []
-        for pos_region in list(pos_regions.values())[:len(pos_regions.values())-1]:
+        for pos_region in list(pos_regions.values())[:len(pos_regions.values())]:
             ##insert variant data
             alt_genotypes, positions = extractVariant(variantFile, positions, pos_region, colnames, chrom)
             publishToDataStreams(chainName, multichainLoc, datadir, alt_genotypes, chrom, MAF, sample_size, prevMAF_df, publishVariant = True )

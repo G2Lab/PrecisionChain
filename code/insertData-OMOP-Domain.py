@@ -395,7 +395,6 @@ def publishToDataStreams(chainName, multichainLoc, datadir, data_ins):
 
 # In[ ]:
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
@@ -479,10 +478,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# tables = parseTables('all')
-# chainName, multichainLoc, datadir = 'mimic2', '', '/gpfs/commons/groups/gursoy_lab/aelhussein/multichain' 
-# hierarchyPath = '/gpfs/commons/groups/gursoy_lab/aelhussein/Data/Vocabulary/CONCEPT_ANCESTOR.csv'
-# dataPath = '/gpfs/commons/groups/gursoy_lab/aelhussein/Data/mimic_iv_omop/Clinical_data/'
-# concept_type, df, keys_df  = processTable(chainName, multichainLoc, datadir, hierarchyPath, dataPath, tables[0])
-# stream_dictionary, stream_concept_dictionary = streamDictionary(df)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-
+ 
 # In[538]:
 
 
@@ -370,20 +370,26 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     ##count the number of samples (not there will be multiple matches from the query as each time a batch of samples is added a new entry is created)
-    samples = 0
+    samples = []
     for match in matches:
-        samples += len(match['data']['json'])
-        
+        ##track mapping files for all unique samples added
+        samples.extend(match['data']['json'])
+    samples = len(set(samples))
+
     ##if not a homozygous gt then carry out search and count number of samples that match
     if gt != '0|0':
+        ##Search mapping stream for all the samples added to the chain
         queryCommand='multichain-cli {} -datadir={} liststreamqueryitems chrom_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
                                                                                                     chrom, variant, gt)
+
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
-
-        alleleMatch = 0
+        ##count the number of samples (not there will be multiple matches from the query as each time a batch of samples is added a new entry is created)
+        alleleMatch = []
         for match in matches:
-            alleleMatch += len(match['data']['json'])
+            ##track mapping files for all unique samples added
+            alleleMatch .extend(match['data']['json'])
+        alleleMatch = len(set( alleleMatch ))
     ##if a homozygous gt then add up all the matches and take #full samples - result (this is because 0|0 is not stored on chain)
     else:
         queryCommand='multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {}'.format(chainName, datadir,
@@ -391,11 +397,12 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
 
-        alleleMatch = 0
+        alleleMatch = []
         for match in matches:
-            alleleMatch += len(match['data']['json'])
+            ##track mapping files for all unique samples added
+            alleleMatch .extend(match['data']['json'])
+        alleleMatch = len(set( alleleMatch ))
         alleleMatch = samples - alleleMatch
-    
     return round(alleleMatch / samples,2)
 
 

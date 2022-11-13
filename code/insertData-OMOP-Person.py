@@ -236,8 +236,8 @@ def publishToDataStreams(chainName, multichainLoc, datadir, data_ins, person_df)
     return
 
 
-# In[ ]:
 
+# In[ ]:
 
 def main():
     parser = argparse.ArgumentParser()
@@ -303,6 +303,7 @@ def main():
         print(e)
         sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
         quit()
+        
         
 
 if __name__ == "__main__":
