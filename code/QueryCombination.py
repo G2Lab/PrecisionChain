@@ -533,26 +533,15 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
     '''
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, person_ids)
     data = {}
-    if searchKeys != 'all':
-        for searchKey in searchKeys:
-            data[searchKey] = pd.DataFrame()
-            for person_id in person_streams.keys():
-                queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamqueryitems person_stream_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
-                                                                                        person_streams[person_id], person_id, searchKey)
-                items = subprocess.check_output(queryCommand.split())
-                matches = json.loads(items, parse_int= int)
-                for match in matches:
-                    value = match['data']['json']
-                    d = pd.DataFrame.from_dict(value, orient = 'index').T
-                    data[searchKey] = pd.concat([data[searchKey],d])
-    else:
-        for person_id in person_streams.keys():
-            queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamkeyitems person_stream_{} {}'.format(chainName, datadir,
-                                                                                    person_streams[person_id], person_id)
-            items = subprocess.check_output(queryCommand.split())
-            matches = json.loads(items, parse_int= int)
-            for match in matches:
-                searchKey = match['keys'][0]
+    searchKeys = searchKeys.split(',')
+    for person_id in person_streams.keys():
+        queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamkeyitems person_stream_{} {}'.format(chainName, datadir,
+                                                                                person_streams[person_id], person_id)
+        items = subprocess.check_output(queryCommand.split())
+        matches = json.loads(items, parse_int= int)
+        for match in matches:
+            key = match['keys'][0]
+            if ('all' in searchKeys[0]) | (key in searchKeys): 
                 value = match['data']['json']
                 d = pd.DataFrame.from_dict(value, orient = 'index').T
                 if searchKey in data:
@@ -631,7 +620,7 @@ def main():
     parser.add_argument("-ch", "--chromosome", help = "chromosome to search")
     parser.add_argument("-ps", "--positions",required=(action_choices[0] in sys.argv), help = "variant positions to search")
     parser.add_argument("-gt", "--genotype",required=(action_choices[0] in sys.argv), help = "genotype to search")
-    parser.add_argument("-sk", "--searchKeys", required=(action_choices[0] in sys.argv), help = "OMOP keys to extract clinical data")
+    parser.add_argument("-sk", "--searchKeys", required=(action_choices[0] in sys.argv), default = 'all', help = "OMOP keys to extract clinical data")
     parser.add_argument("-gn", "--gene", required=(action_choices[1:4:2] in sys.argv), help = "genes to search")
     parser.add_argument("-ir", "--inputRange", required=(action_choices[2:4] in sys.argv), help = "MAF range to search", default = "")
     parser.add_argument("-ck", "--cohortKeys", required=(action_choices[3] in sys.argv), help = "OMOP keys to define cohort by")
