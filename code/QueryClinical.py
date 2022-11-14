@@ -161,7 +161,7 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
 
 
 def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person):
-	matches = []
+    matches = []
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person)
     for person_id in person_streams.keys():
         queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_stream_{} {} false 999'.format(chainName, datadir,
