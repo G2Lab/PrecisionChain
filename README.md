@@ -75,8 +75,9 @@ python insertData-gtf.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -gp=[GTF FILE DIR
 - [MULTICHAIN DIR] = Directory where multichain data is being stored in <br/>
 - [COHORT KEYS] = OMOP concept codes used to define the cohort e.g. OMOP code 201826 to select patients with Type II diabetes diagnosis. Multiple keys can be provided. Please separate keys with ','. <br/>
 - [SEARCH KEYS] = OMOP concept codes to extract within the cohort e.g. OMOP code 44790340 extract all drugs taken by cohort. Multiple keys can be provided. Please separate keys with ','. <br/>
-- [VIEW]QueryVariant = Option of variant, person or MAF. Variant view extracts all data for a given set of positions. Person view extracts all genotypes for a given set of patients. MAF view extracts all variants within a certain MAF range. <br/>
-- [VIEW]QueryCombination = Option of variant, gene, MAF or clinical. Variant view extracts all genes associated with given set of variants. Gene view extracts all variants for given genes. MAF view extracts all variants within a certain MAF range for a given gene. Clinical view extracts variant information in a given gene for patients in a specified clinical cohort <br/>
+- [VIEW_CLINICAL] QueryClinical = Option of domain or person. Domain view takes a cohortKey and returns data for that cohort. Person view extracts all clinical data for a given set of patients. Both results can be filtered by SearchKey which filters the clinical information returned. <br/>
+- [VIEW_GENETIC]QueryVariant = Option of variant, person or MAF. Variant view extracts all data for a given set of positions. Person view extracts all genotypes for a given set of patients. MAF view extracts all variants within a certain MAF range. <br/>
+- [VIEW_COMBINATION] QueryCombination = Option of variant or clinical. Variant view extracts clinical information for patients with the searched variant (position and genotype).Clinical view extracts variant information in a given gene for patients in a specified clinical cohort <br/>
 - [CHROMOSOMES] = Chromsomes to search. Multiple chromosomes can be provided. Please separate with ','. Only necessary if [VIEW] = Variant OR Person <br/>
 - [GENOTYPES] = Genotypes to extract from each variant i.e. '0/0', '1/0', '1/1'. Only necessary if [VIEW] = Variant <br/>
 - [PERSON_IDS] = Person IDs to search. Multiple IDs can be provided. Please separate with ','. Only necessary if [VIEW] = Person <br/>
@@ -86,15 +87,15 @@ python insertData-gtf.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -gp=[GTF FILE DIR
 
 #### Query clinical data
 ```
-python QueryClinical.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] -ck=[COHORT KEYS] -sk=[SEARCH KEY]
+python QueryClinical.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW_CLINICAL] -ck=[COHORT KEYS] -sk=[SEARCH KEY] -pi=[PERSON_IDS]
 ```
 #### Query genetic data
 ```
-python QueryVariant.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW] -ch=[CHROMOSOMES] -ps=[POSITIONS]  -gt=[GENOTYPES] -pi=[PERSON_IDS] -ir=[INPUT RANGE]
+python QueryVariant.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW_GENETIC] -ch=[CHROMOSOMES] -ps=[POSITIONS]  -gt=[GENOTYPES] -pi=[PERSON_IDS] -ir=[INPUT RANGE]
 ```
 #### Query combination of clinical and genetic data
 ```
-python QueryCombination.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW] -ch=[CHROMOSOMES] -gn=[GENE]  -ir=[INPUT RANGE] -ck=[COHORT KEYS]
+python QueryCombination.py -cn=[CHAIN NAME] -dr=[MULTICHAIN DIR] --view=[VIEW_COMBINATION] -ch=[CHROMOSOMES] -gn=[GENE]  -ir=[INPUT RANGE] -ck=[COHORT KEYS] -gt=[GENOTYPES]
 ```
 
 
