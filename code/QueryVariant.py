@@ -373,7 +373,7 @@ def MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRange
         numericRange - the numeric values of the user inputted range
     '''
     ##multichain command to extract positions from MAF stream using streamRange
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems MAF_chrom_{} {}'.format(chainName, datadir, chrom, streamRange)
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems MAF_chrom_{} {} false 99999'.format(chainName, datadir, chrom, streamRange)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     MAF_variants = matches[0]['data']['json']
@@ -403,6 +403,21 @@ def MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRange
         MAF_parsed_df = pd.DataFrame(np.vstack(MAF_parsed), columns = ['pos','ref','alt','gt','maf'])
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
         return MAF_parsed_df
+
+def MAFqueries(chainName, multichainLoc, datadir, chrom, inputRange):
+    '''
+    Full MAF query that uses queryRangeParser and MAFquery to extract relevant positions
+    Inputs:
+        chrom - chromosome of interest
+        inputRange - the MAF range user has inputted
+    '''
+    streamRanges, numericRanges = queryRangeParser(inputRange)
+    MAFquery_df = pd.DataFrame(columns = ['pos','ref','alt','gt','maf'])
+    for streamRange in streamRanges:
+        MAFquery_df = MAFquery_df.append(MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRanges))
+    print(MAFquery_df)
+    return MAFquery_df
+
 
 # ## variant-gene queries
 
@@ -490,7 +505,7 @@ def main():
              extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosomes)
 
         elif args.view == action_choices[3]:
-            MAFqueries(args.chainName, args.datadir, args.chromosomes, args.inputRange)
+            MAFqueries(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.inputRange)
         
         end = time.time()
         e = int(end - start)
