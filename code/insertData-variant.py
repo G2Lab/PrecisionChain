@@ -93,7 +93,7 @@ def mappingSamplePerson(mappingFile, variantFile):
         variantFiles - files to be added (one per chromosome)
     '''
     #mapping of person_ids to sample_ids, needed as using fake sample genes
-    with open('{}.txt'.format(mappingFile)) as f:
+    with open('{}'.format(mappingFile)) as f:
         mapping = f.read()    
     sample_person = json.loads(mapping)
     #extract samples from vcf file
@@ -367,19 +367,20 @@ def publishMAF(chainName, multichainLoc, datadir, MAF, chrom):
         MAF: dictionary that contains the MAF for every position-genotype
     '''
     ##convert dictionary to dataframe and create multi-index using position-genotype
-    MAF_df = pd.DataFrame.from_dict(MAF, orient='index', columns = ['count', 'total', 'freq'])
-    MAF_df.index = pd.MultiIndex.from_tuples(MAF_df.index)
-    ##calculate the new MAF
-    MAF_df['freq'] = MAF_df['count'].div(MAF_df['total'])
-    ##bucket the MAFs into ranges and insert into stream
-    ranges = [(0,0.05), (0.05,0.1), (0.1, 0.15), (0.15,0.2), (0.2,0.3), (0.3,0.4), (0.4,0.5), (0.5,1) ]
-    for range in ranges:
-        MAF_group = MAF_df[(MAF_df['freq'] > range[0]) &  (MAF_df['freq'] <= range[1])]
-        streamName = chrom
-        streamKeys = "{}-{}".format(range[0], range[1])
-        streamValues ='{'+'"json":"{}"'.format(MAF_group['freq'].to_json().replace('"','').replace("'","")) +'}'#create JSON data object
-        streamValues = streamValues.replace("'",'"')
-        publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues, publishVariant = False)
+    if MAF:
+        MAF_df = pd.DataFrame.from_dict(MAF, orient='index', columns = ['count', 'total', 'freq'])
+        MAF_df.index = pd.MultiIndex.from_tuples(MAF_df.index)
+        ##calculate the new MAF
+        MAF_df['freq'] = MAF_df['count'].div(MAF_df['total'])
+        ##bucket the MAFs into ranges and insert into stream
+        ranges = [(0,0.05), (0.05,0.1), (0.1, 0.15), (0.15,0.2), (0.2,0.3), (0.3,0.4), (0.4,0.5), (0.5,1) ]
+        for range in ranges:
+            MAF_group = MAF_df[(MAF_df['freq'] > range[0]) &  (MAF_df['freq'] <= range[1])]
+            streamName = chrom
+            streamKeys = "{}-{}".format(range[0], range[1])
+            streamValues ='{'+'"json":"{}"'.format(MAF_group['freq'].to_json().replace('"','').replace("'","")) +'}'#create JSON data object
+            streamValues = streamValues.replace("'",'"')
+            publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues, publishVariant = False)
     
     return
 

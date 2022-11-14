@@ -228,10 +228,10 @@ def extractPersonIDsChromsPos(person_ids, chroms, pos):
         chroms - chromosomes the variant is in
         pos - positions to search
     '''
-    chroms = chroms.split(',')
-    person_ids = person_ids.split(',')
+    chroms = [str(chr).strip() for chr in chroms.split(',')]
+    person_ids = [str(idx).strip() for idx in person_ids.split(',')]
     if pos != 'all':
-        pos = pos.split(',')
+        pos = [str(variant).strip() for variant in pos.split(',')]
     return chroms, person_ids, pos
 
 
@@ -260,11 +260,10 @@ def queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id):
 
         except:
             pass
-    person_variants_df.drop_duplicates(inplace = True)
-    
+    deduped_persons = person_variants_df[~person_variants_df.index.duplicated(keep='last')]    
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     
-    return person_variants_df
+    return deduped_persons
 
 
 # In[9]:
@@ -279,11 +278,18 @@ def extractAllPosition(chainName, multichainLoc, datadir, chrom):
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants chrom_{}'.format(chainName, datadir, chrom)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
+    if matches and matches[0]['data'].get('txid'):
+        return get_json_payload_from_txid(matches[0]['data'].get('txid'), chainName, datadir)
     return matches[0]['data']['json']
 
 
 # In[61]:
 
+
+def get_json_payload_from_txid(txid, chainName, datadir):
+    queryCommand = 'multichain-cli {} -datadir={} gettxoutdata {} 0'.format(chainName, datadir, txid)
+    items = subprocess.check_output(queryCommand.split())
+    return items
 
 def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos):
     '''
@@ -298,7 +304,8 @@ def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos)
     ##for every sample, extract their relevant positions and merge to the dataframe
     for person_id in person_ids:
         query_df = queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id)
-        query_df.index = pd.to_numeric(query_df.index)
+        # Following line perhaps isn't necessary since the positions are strings
+        # query_df.index = pd.to_numeric(query_df.index)
         person_df = person_df.merge(query_df, right_index = True, left_index = True, how = 'outer')
         person_df['ref_allele'].update(person_df.pop('ref_allele_{}'.format(person_id)))
         person_df['alt_allele'].update(person_df.pop('alt_allele_{}'.format(person_id)))
@@ -313,7 +320,8 @@ def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos)
         person_full_df  = pd.concat([person_df, homo])
     ##filter out positions not of interest
     if pos != 'all':
-        person_full_df = person_df.loc[pos]
+        # Bek: we first find the good keys to avoid index error
+        person_full_df = person_full_df.loc[person_full_df.index.intersection(pos)]
     return person_full_df
 
 

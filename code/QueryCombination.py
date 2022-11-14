@@ -30,6 +30,10 @@ import multiprocessing
 import numpy as np
 from itertools import compress
 from datetime import datetime
+from pprint import pprint as pp
+import json
+import pdb
+from json.decoder import JSONDecodeError
 warnings.simplefilter(action='ignore')
 
 
@@ -112,6 +116,8 @@ def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
         variant - position of the variant of interest
         chrom - which chromosome the variant is on
     '''
+    if type(variants) is str:
+        variants = variants.split(',')
     for variant in variants:
         gene = extractVariantGenes(chainName, multichainLoc, datadir, variant, chrom)
         if gene:
@@ -276,14 +282,18 @@ def queryMAFVariantGene(chainName, multichainLoc, datadir, chrom, inputRange):
     ##dictionary of variant, MAF and associated personIDs
     variant_dict = extractMAFPersonIDs(chainName, multichainLoc, datadir, chrom, inputRange)
     ##loop through each variant and query the gene stream for associated genes
+    results = []
     for variant, person_ids in variant_dict.items():
         gene_df = queryVariantGene(chainName, multichainLoc, datadir, [variant[0]], chrom)
         try:
             gene_df['gt'] = variant[1]
             gene_df['person_ids'] = [person_ids for _ in range(len(gene_df))]
-            print(gene_df)
+            results.append(gene_df)
+            # Avoid printing for now
+            # print(gene_df)
         except:
             pass
+    return results
 
 
 
@@ -473,7 +483,8 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
         variants_df_filtered = variants_df[(variants_df['MAF'] >= numericRanges[0]) & (variants_df['MAF'] <= numericRanges[1])]
     else:
         variants_df_filtered = variants_df
-    print(variants_df_filtered)
+    # Avoid printing for now
+    #print(variants_df_filtered)
     return variants_df_filtered
 
 # ## Variant to clinical queries
@@ -640,11 +651,27 @@ def main():
         
         ##deprecated
         elif args.query== action_choices[2]:
-            queryMAFVariantGene(args.chainName, args.multichainLoc, args.datadir, args.chromosome, args.inputRange)
+            result = queryMAFVariantGene(args.chainName, args.multichainLoc, args.datadir, args.chromosome, args.inputRange)
         
         elif args.query == action_choices[3]:
-            queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
+            result, result_dict = queryClinicalGeneVariantRange(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.gene, args.chromosome, args.inputRange)
         
+        filtered_results = []
+        if args.query == action_choices[3] and result_dict:
+            result = {str(k):v for k, v in result_dict.items()}
+        elif type(result) is not list:
+            result = json.loads(result.to_json(orient="records"))
+        else:
+            for item in result:
+                if type(item) is pd.DataFrame and item.empty:
+                    continue
+                elif type(item) is pd.DataFrame:
+                    filtered_results.append(json.loads(item.to_json(orient="records")))
+                elif item:
+                    filtered_results.append(item)
+            result = filtered_results
+        current_search = {"{}".format(" ".join(sys.argv[3:])): result}
+
         end = time.time()
         e = int(end - start)
         print('\n\n Time elapsed:\n\n')

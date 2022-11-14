@@ -53,11 +53,14 @@ def subscribeToStream(chainName, multichainLoc, datadir):
 
 def queryMappingStream(chainName, multichainLoc, datadir, keys):
     concepts = []
-    for key in keys: 
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_clinical {} false 999'.format(chainName, datadir, key)
-        items = subprocess.check_output(queryCommand.split())
-        info = tuple(json.loads(items, parse_int= int)[0]['keys'])
-        concepts.append(info)
+    for key in keys:
+        try:
+            queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_clinical {}'.format(chainName, datadir, key)
+            items = subprocess.check_output(queryCommand.split())
+            info = tuple(json.loads(items, parse_int= int)[0]['keys'])
+            concepts.append(info)
+        except:
+            pass
     return list(set(concepts))
 
 
@@ -117,19 +120,14 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
         personids = [int(id) for id in cohortKeys.split(',')]
     else:
         personids = cohortKeys
-    persons_df = pd.DataFrame()
+    matches = []
     
     for personid in personids:
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {} false 999'.format(chainName, datadir, personid)
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
         items = subprocess.check_output(queryCommand.split())
-        json_item = json.loads(items, parse_int= int)[1]['data']['json']
-        person_df = pd.DataFrame.from_dict(json_item, orient = 'index').T
-        persons_df = pd.concat([persons_df,person_df])
-    persons_df.set_index('person_id', inplace = True)
-    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-    persons_json = persons_df.to_json(orient = 'index')
-    print(persons_json)
-    return persons_json
+        matches += json.loads(items, parse_int= int)
+        publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    return matches
 
 
 def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
@@ -139,6 +137,7 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
         cohortKeys: OMOP keys used to build cohort
         searchKeys: OMOP keys for data of interest for cohort (i.e. particular medication)
     '''
+    matches = []
     ##extract person_ids
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
     ##extract streams for search keys
@@ -152,24 +151,26 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
                     queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {} false 999'.format(chainName, datadir,
                                                                                                 stream[1], stream[2], bucket+1, person_id)
                     items = subprocess.check_output(queryCommand.split())
-                    matches = json.loads(items, parse_int= int)
+                    matches += json.loads(items, parse_int= int)
                     if matches:
                         print(matches)
                     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    return matches
 
 # In[ ]:
 
 
 def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person):
+    matches = []
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person)
     for person_id in person_streams.keys():
         queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_stream_{} {} false 999'.format(chainName, datadir,
                                                                                     person_streams[person_id], person_id)
         items = subprocess.check_output(queryCommand.split())
-        matches = json.loads(items, parse_int= int)
+        matches.extend(json.loads(items, parse_int= int))
         print(matches)
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-    return
+    return matches
 
 
 def queryPersonStreamSpecific(chainName, multichainLoc, datadir, person_ids, searchKeys):
@@ -189,15 +190,15 @@ def queryPersonStreamSpecific(chainName, multichainLoc, datadir, person_ids, sea
 
 
 def domainQuery(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
-    
+    results = []
     cohortKeys, searchKeys = parseKeys(cohortKeys, searchKeys)
     if searchKeys[0] == 'demographics':
-        queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
+        results = queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
     elif searchKeys[0] == 'all' :
-        queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person = False)
+        results = queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person = False)
     else:
-        queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
-    return
+        results = queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
+    return results
 
 
 def personQuery(chainName, multichainLoc, datadir, person_ids, searchKeys):

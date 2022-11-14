@@ -203,7 +203,7 @@ def main():
 
     start = time.time()
     
-    cpu = multiprocessing.cpu_count()
+    cpu = multiprocessing.cpu_count() * 2
     print('CPUs available: {}'.format(cpu))
     
     try:
@@ -222,14 +222,14 @@ def main():
             p_ins.start()
             
             
-            for process in processes:
-                process.join()
+        for process in processes:
+            process.join()
             
-            print('Inserted {}'.format(paths_split_ins))
-            end = time.time()
-            e = int(end - start)
-            print('\n\n Time elapsed:\n\n')
-            print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
+            # print('Inserted {}'.format(paths_split_ins))
+            # end = time.time()
+            # e = int(end - start)
+            # print('\n\n Time elapsed:\n\n')
+            # print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
 
         
         end = time.time()
