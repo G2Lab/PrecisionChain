@@ -168,22 +168,24 @@ def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys
                                                                                     person_streams[person_id], person_id)
         items = subprocess.check_output(queryCommand.split())
         matches.extend(json.loads(items, parse_int= int))
-        print(matches)
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    print(matches)
     return matches
 
 
 def queryPersonStreamSpecific(chainName, multichainLoc, datadir, person_ids, searchKeys):
     person_streams = extractPersonStreams(chainName, multichainLoc, datadir, person_ids, person=True)
+    matches = []
     for person_id in person_streams.keys():
         for searchKey in searchKeys:
-            queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamqueryitems person_stream_{} {{"keys":["{}","{}"]}} false 999'.format(chainName, datadir,
+            queryCommand = multichainLoc+'multichain-cli {} -datadir={}  liststreamqueryitems person_stream_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
                                                                                     person_streams[person_id], person_id, searchKey)
             items = subprocess.check_output(queryCommand.split())
-            matches = json.loads(items, parse_int= int)
-            print(matches)
+            matches.extend(json.loads(items, parse_int= int))
             publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-    return
+    print(matches)  
+    return matches
+
 
 
 # In[ ]:
@@ -207,11 +209,12 @@ def personQuery(chainName, multichainLoc, datadir, person_ids, searchKeys):
     cohortKeys = person_ids
     person = True
     if searchKeys[0] == 'demographics':
-        queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
+        results = queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
     elif searchKeys[0] == 'all' :
-        queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person)
+        results = queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person)
     else:
-        queryPersonStreamSpecific(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
+        results = queryPersonStreamSpecific(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
+    return results
 
 
 # ## audit log

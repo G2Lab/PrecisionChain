@@ -583,7 +583,7 @@ def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, chrom, v
     else:
         data = queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys)
 
-    return
+    return data
 
 # ## log queries
 
