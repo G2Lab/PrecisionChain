@@ -358,7 +358,7 @@ def extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys):
     ids = []
     ##parse through the match to get the personIDs
     for match in matches:
-        ids.append(int(match['keys'][0]))
+        ids.append(int(match['keys'][1]))
     return(list(set(ids)))
 
 
