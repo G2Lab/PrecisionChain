@@ -371,7 +371,7 @@ def publishToDataStream(row, chainName, multichainLoc, datadir, concept_type, ke
         str('-datadir={}'.format(datadir)),
         'publish',
         str('{}_id_{}_bucket_{}'.format(concept_type,streamName, streamBucket+1)), 
-        str('["{}", "{}", "{}", "{}", "{}"]'.format(streamKeys[0], streamKeys[1], streamKeys[2], streamKeys[3], streamKeys[4])),
+        str('["{}", "{}", "{}", "{}", "{}"]'.format(concept_type, streamKeys[0], streamKeys[1], streamKeys[2], streamKeys[3], streamKeys[4])),
         str('{}'.format(streamValues))]
     procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     procPublish.wait()
