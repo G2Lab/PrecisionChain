@@ -210,7 +210,6 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype):
     variants_df.set_index('variant', inplace = True)
     variants_json = variants_df.to_json(orient = 'index')
 
-    print(variants_json)
     return variants_json
         
 
@@ -340,7 +339,6 @@ def queryPersonsChroms(chainName, multichainLoc, datadir, chroms, person_ids, po
     queryReturn = {}
     for chrom in chroms:
         queryReturn[int(chrom)] = queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos)
-    print(queryReturn)
     return queryReturn
 
 
@@ -423,7 +421,6 @@ def MAFqueries(chainName, multichainLoc, datadir, chrom, inputRange):
     MAFquery_df = pd.DataFrame(columns = ['pos','ref','alt','gt','maf'])
     for streamRange in streamRanges:
         MAFquery_df = MAFquery_df.append(MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRanges))
-    print(MAFquery_df)
     return MAFquery_df
 
 
@@ -517,11 +514,8 @@ def main():
         
         end = time.time()
         e = int(end - start)
-        print('\n\n Time elapsed:\n\n')
-        print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
     
     except Exception as e:
-        print(e)
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         

@@ -124,8 +124,7 @@ def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
             gene_data = exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom)
             return gene_data
         else:
-            print('No gene associated with variant position {}'.format(variant))
-
+            return None
 
 # ## gene -> variant query
 
@@ -290,7 +289,6 @@ def queryMAFVariantGene(chainName, multichainLoc, datadir, chrom, inputRange):
             gene_df['person_ids'] = [person_ids for _ in range(len(gene_df))]
             results.append(gene_df)
             # Avoid printing for now
-            # print(gene_df)
         except:
             pass
     return results
@@ -484,7 +482,6 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
     else:
         variants_df_filtered = variants_df
     # Avoid printing for now
-    #print(variants_df_filtered)
     return variants_df_filtered
 
 # ## Variant to clinical queries
@@ -522,7 +519,6 @@ def queryDemographics(chainName, multichainLoc, datadir, person_ids):
     persons_df.set_index('person_id', inplace = True)
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     persons_json = persons_df.to_json(orient = 'index')
-    print(persons_json)
     return persons_json
 
 
@@ -560,8 +556,6 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
                     data[key] = pd.DataFrame()
                     data[key] = pd.concat([data[key],d])
     
-    for key in data:
-        print(data[key])
         
     return data
 
@@ -674,11 +668,8 @@ def main():
 
         end = time.time()
         e = int(end - start)
-        print('\n\n Time elapsed:\n\n')
-        print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
     
     except Exception as e:
-        print(e)
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         
