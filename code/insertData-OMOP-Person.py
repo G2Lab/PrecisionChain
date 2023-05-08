@@ -28,6 +28,7 @@ import numpy as np
 import json
 import warnings
 warnings.simplefilter(action='ignore')
+import persons
 
 
 # In[2]:
@@ -55,11 +56,12 @@ def loadPatients(path):
     df = pd.read_csv(path)
     df['stream'] = pd.qcut(df['person_id'], q = 20, labels =np.arange(1,21,1))
     df['person_id'] = df['person_id'].astype(str)
+    # Loads only the people/NTASKS number of people
+    df = df[df.person_id.isin(persons.getChunk())]
     return df
 
 
 # In[4]:
-
 
 def processDateKey(keys_df):
     '''
@@ -86,6 +88,8 @@ def loadData(path, table):
     '''
     df = pd.read_csv(path + table +'.csv')
     df['person_id'] = df['person_id'].astype(str)
+    # Loads only the people/NTASKS number of people
+    df = df[df.person_id.isin(persons.getChunk())]
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]
     
@@ -189,8 +193,10 @@ def publishToMappingStreams(chainName, multichainLoc, datadir, person_df):
                 str('["{}","{}","{}"]'.format(streamKeys[0],streamKeys[1],streamKeys[2])),
                 str('{}'.format(streamValues))
                     ]
-            procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            procPublish.wait()
+            print(" ".join(publishCommand))
+            procPublish = subprocess.run(publishCommand, capture_output=True, text=True)
+            print(procPublish.stdout)
+            print(procPublish.stderr)
     return
 
 
@@ -253,7 +259,8 @@ def main():
     
     tables = parseTables(args.tables)
     processes = []
-    cpu = multiprocessing.cpu_count()
+    # cpu = multiprocessing.cpu_count()
+    cpu = 16
     print('CPUs available: {}'.format(cpu))
     
     try:

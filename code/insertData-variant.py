@@ -262,7 +262,7 @@ def publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKey
     
     ##if publishing MAF data
     else:
-        publishCommand = [multichainLoc+'multichain-cli', 
+        publishCommand = [multichainLoc+'multichain-cli',
             str('{}'.format(chainName)), 
             str('-datadir={}'.format(datadir)),
             'publish',
@@ -459,7 +459,8 @@ def main():
 
     start = time.time()
     
-    cpu = multiprocessing.cpu_count()
+    # cpu = multiprocessing.cpu_count()
+    cpu = 16
     print('CPUs available: {}'.format(cpu))
     
     try:

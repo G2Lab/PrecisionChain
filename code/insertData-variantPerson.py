@@ -32,6 +32,7 @@ import itertools
 from io import BytesIO
 from itertools import islice
 warnings.simplefilter("ignore")
+import persons
 
 
 # In[2]:
@@ -139,7 +140,7 @@ def extractPersonVariants(file, sample_id):
         return chrom, values
     except:
         chrom = file.split('/')[-1].split('.')[0]
-        chrom, Falsex
+        chrom, False
 
 
 # In[26]:
@@ -193,6 +194,10 @@ def publishMappingPerson(chainName, multichainLoc, datadir, samples):
     Input:
         samples: List of all sample ID in file
     '''
+    # Benchmarking. Only publish from the main node
+    if int(os.environ.get('SLURM_ARRAY_TASK_ID', 0)) > 0:
+        print("Skipping publishToMappingStream in worker nodes")
+        return
     streamName = 'mappingData_variants'
     streamKeys = 'samples'
     streamValues = '{'+'"json":{}'.format(json.dumps(samples)) + '}'
@@ -231,8 +236,12 @@ def publishToDataStreams(fields):
                 split_variants = chunkDictionary(streamValues, SIZE=200)
                 for v in split_variants.values():
                     streamKeys = sample_person[sample_id]
-                    streamValues ='{'+'"json":{}'.format(json.dumps(v)) +'}'#create JSON data object
-                    publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
+                    # Person specific data is inserted from distributed nodes
+                    if streamKeys in persons.getChunk():
+                        streamValues ='{'+'"json":{}'.format(json.dumps(v)) +'}'#create JSON data object
+                        publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
+                    else:
+                        pass
             else:
                 pass
                     
@@ -253,7 +262,9 @@ def main():
 
     start = time.time()
     
-    cpu = multiprocessing.cpu_count()
+    # cpu = multiprocessing.cpu_count()
+    cpu = 16
+    
     print('CPUs available: {}'.format(cpu))
     
     try:

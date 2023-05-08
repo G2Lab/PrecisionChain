@@ -444,7 +444,8 @@ def main():
 
     start = time.time()
     
-    cpu = multiprocessing.cpu_count()
+    # cpu = multiprocessing.cpu_count()
+    cpu = 16
     print('CPUs available: {}'.format(cpu))
     
     try:

@@ -29,6 +29,7 @@ import json
 import warnings
 import random
 warnings.simplefilter("ignore")
+import persons
 
 
 # In[3]:
@@ -40,7 +41,7 @@ def parseTables(tables):
     '''
     #parse the tables that are part of user input (ADD IN MEASUREMENT LATER REMOVED TO SPEED UP INSERTION)
     if tables == 'all':
-        tables = ['condition_occurrence', 'drug_exposure', 'device_exposure', 'observation', 'procedure_occurrence', 'specimen', 'visit_occurrence']
+        tables = ['condition_occurrence', 'drug_exposure', 'device_exposure', 'observation', 'procedure_occurrence', 'specimen', 'visit_occurrence', 'measurement']
     else:
         tables = str.split(tables.replace(" ",""), ',')
     return tables
@@ -61,6 +62,8 @@ def loadConcepts(dataPath, table):
     dataPath = '{}/{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
     df['person_id'] = df['person_id'].astype(str)
+    # Loads only the people/NTASKS number of people
+    df = df[df.person_id.isin(persons.getChunk())]
     unique_codes = list(df.iloc[:,2].unique())
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]
@@ -226,6 +229,8 @@ def loadData(dataPath, table, keys):
     dataPath = '{}/{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
     df['person_id'] = df['person_id'].astype(str)
+    # Loads only the people/NTASKS number of people
+    df = df[df.person_id.isin(persons.getChunk())]
     #get concept
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]
@@ -332,6 +337,10 @@ def publishToMappingStream(chainName, multichainLoc, datadir, concept, concept_t
         concept_type - which data table the concept is from
         stream - what stream (super concept it is under)
     '''
+    # Benchmarking. Only publish from the main node
+    if int(os.environ.get('SLURM_ARRAY_TASK_ID', 0)) > 0:
+        print("Skipping publishToMappingStream in worker nodes")
+        return
     streamName = "mappingData_clinical"
     streamKeys = concept, concept_type, list(stream.keys())[0], list(stream.values())[0]
     streamValues ='{"json":'+json.dumps(stream)+'}' #create JSON 
@@ -406,7 +415,8 @@ def main():
     args = parser.parse_args()
 
     start = time.time()
-    cpu = multiprocessing.cpu_count()
+    # cpu = multiprocessing.cpu_count()
+    cpu = 16
     print('CPUs available: {}'.format(cpu))
     
     tables = parseTables(args.tables)
@@ -462,7 +472,8 @@ def main():
             e = int(end - start)
             print('\n\n Time elapsed:\n\n')
             print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
-    except:
+    except Exception as e:
+        print(e)
         sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
         quit()
 

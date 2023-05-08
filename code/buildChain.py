@@ -23,6 +23,7 @@ import os
 import psutil
 import time
 import pandas as pd
+import json
 
 # define global variables
 chrType = -1
@@ -35,11 +36,17 @@ chrType = -1
 def createChain(chainName, multichainLoc, datadir):
     createCommand = (
         multichainLoc
-        + "multichain-util create {} -datadir={} -anyone-can-admin=true".format(
+        + "multichain-util create {} -datadir={}".format(
             chainName, datadir
         )
     )
-    runCommand = multichainLoc + "multichaind {} -datadir={} -daemon".format(
+
+
+    runCommand = multichainLoc + "multichaind {} -autosubscribe=streams -datadir={} -daemon".format(
+        chainName, datadir
+    )
+
+    queryCommand = multichainLoc + "multichain-cli {} -datadir={} getinfo".format(
         chainName, datadir
     )
 
@@ -58,6 +65,11 @@ def createChain(chainName, multichainLoc, datadir):
         runCommand.split()
     )  # returns 0 whether or not it had an error; subprocess hangs
     # because output is too long (known subprocess bug); just relying on chain creation to catch bug
+    
+    # capture output of getinfo command
+    result = subprocess.run(queryCommand.split(), capture_output=True, text=True).stdout
+    with open(datadir + "/nodeaddress.txt", "w") as f:
+        f.write(json.loads(result)["nodeaddress"])
     time.sleep(1)
     return
 
