@@ -1,0 +1,23 @@
+#!/usr/bin/bash
+#SBATCH --job-name=pca_preprocess
+#SBATCH --partition=pe2
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=aelhussein@nygenome.org
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=80G
+#SBATCH --time=10:00:00
+
+
+source ~/anaconda3/bin/activate ~/anaconda3/envs/blockchain_env/
+module load multichain
+module load bcftools
+module load plink
+conda activate blockchain_env
+
+#Process VCF files
+DP=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
+python preprocessVCF.py -dp=$DP
+
+
+

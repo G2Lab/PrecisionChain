@@ -1,0 +1,46 @@
+#!/usr/bin/bash
+#SBATCH --job-name=pca_preprocess
+#SBATCH --partition=pe2
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=aelhussein@nygenome.org
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=80G
+#SBATCH --time=10:00:00
+
+
+source ~/anaconda3/bin/activate ~/anaconda3/envs/blockchain_env/
+module load multichain
+module load bcftools
+module load plink
+conda activate blockchain_env
+
+module load plink
+module load bcftools
+
+# Set the path to the directory containing the VCF files and PCA variants
+export vcf_dir="/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing"
+export filter_file="/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing//37_38_mapping/pca_variants_18.txt"
+
+# Filter files for PCA variants
+chromosomes=( $(seq 1 22) )
+parallel -j 16 '
+  awk -v chr="{}" '\''$1==chr {print $1 "\t" $2}'\' ' '"${filter_file}"' > temp_regions_{}.txt
+  bcftools view --regions-file temp_regions_{}.txt '"${vcf_dir}"'/original/chr{}.vcf.gz -Oz -o '"${vcf_dir}"'/pca_ref/chr{}.vcf.gz
+  rm temp_regions_{}.txt
+' ::: "${chromosomes[@]}"
+
+#Concatenate VCF files
+for i in $(seq 1 22); do echo chr${i}.vcf.gz >> files.txt ; done
+bcftools concat -f files.txt -Oz -o merged.vcf.gz
+
+#Convert to BED
+plink --vcf ${vcf_dir}/pca_bigsnpr/merged.vcf.gz --make-bed --out ${vcf_dir}/pca_bigsnpr/merged
+
+#Run bigsnpr PCA
+SV="/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing"
+RF="merged"
+SF="merged"
+preprocessPCA.R $SV $RF $SF
+
+
