@@ -7,8 +7,8 @@
 '''
 QueryVariant.py
 Queries VCF data either by searching for specific variants, sepcific samples or MAF ranges
-Usage: $ python QueryCombination.py -cn=<chain name> -dr=<Chain path> -ch=<Chromosome> -ps=<Variant position> -gn=<Gene> -pi=<person ids> -ir=<MAF range> 
-modified by AE 05/2022
+Usage: $ python QueryVariant.py -cn=<chain name> -dr=<Chain path> -ch=<Chromosome> -ps=<Variant position> -gn=<Gene> -pi=<person ids> -ir=<MAF range> 
+modified by AE 07/2023
 '''
 import sys
 import time
@@ -457,6 +457,7 @@ def extractGeneVariants(chainName, multichainLoc, datadir, gene, chrom):
         return variants
     return None
 
+#BEGIN_NEW#
 # Metadata queries
 def queryMetadata(chainName, multichainLoc, datadir, search_values):
     '''
@@ -473,6 +474,7 @@ def queryMetadata(chainName, multichainLoc, datadir, search_values):
     #Parse the search values specified
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     all_patient_ids = {}
+    search_values = search_values.split(',')
     for search_value in search_values:
         filtered_dicts = [d for d in matches if all(key in d['keys'] for key in [search_value])]
         return_value = [[x for x in d["keys"] if x!=search_value][0] for d in filtered_dicts]
@@ -597,6 +599,7 @@ def getPatientVariantAnnotation(chainName, multichainLoc, datadir, chrom, annots
         df = df.merge(patient_variants, left_on = 'Position', right_index = True)
         annot_query_data[annot] = df
         return annot_query_data
+#END_NEW#
 
 # ## log queries
 
@@ -636,19 +639,19 @@ def publishToAuditstream(chainName, multichainLoc, datadir, queryCommand):
 
 def main():
     parser = argparse.ArgumentParser()
-    action_choices = ['variant', 'person', 'gene', 'maf']
+    action_choices = ['variant', 'person', 'gene', 'maf', 'meta', 'annot'] #NEW_LINE
     parser.add_argument('--view', choices=action_choices)
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
-    parser.add_argument("-ch", "--chromosomes", help = "chromosome to search")
+    parser.add_argument("-ch", "--chromosomes", help = "chromosome to search", default = '')
     parser.add_argument("-ps", "--positions",required=(action_choices[0:2] in sys.argv), help = "positions to search", default = "all")
     parser.add_argument("-gt", "--genotypes", required=(action_choices[0] in sys.argv), help = "genotypes to search")
     parser.add_argument("-pi", "--person_ids", required=(action_choices[1] in sys.argv), help = "person_ids to search")
     parser.add_argument("-gn", "--gene", required=(action_choices[2] in sys.argv), help = "genes to search")
     parser.add_argument("-ir", "--inputRange", required=(action_choices[3] in sys.argv), help = "MAF range to search")
-    parser.add_argument("-md", "--metadata", required=([action_choices[i] for i in (0,4)] in sys.argv), help = "metadata to search or filter on", default="none")
-    parser.add_argument("-at", "--annotations", required=(action_choices[5] in sys.argv), help = "annotations to search", default="none")
+    parser.add_argument("-md", "--metadata", required=([action_choices[i] for i in (0,4)] in sys.argv), help = "metadata to search or filter on", default="none") #NEW_LINE
+    parser.add_argument("-at", "--annotations", required=(action_choices[5] in sys.argv), help = "annotations to search", default="none") #NEW_LINE
 
     args = parser.parse_args()
     start = time.time()
@@ -665,9 +668,9 @@ def main():
 
         elif args.view == action_choices[3]:
             MAFqueries(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.inputRange)
-
+        #BEGIN_NEW#
         elif args.view == action_choices[4]:
-            all_patient_ids = queryMetadata(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.inputRange)
+            all_patient_ids = queryMetadata(args.chainName, args.multichainLoc, args.datadir, args.metadata)
             print(all_patient_ids)
         
         elif args.view == action_choices[5]:
@@ -676,7 +679,7 @@ def main():
                      print('Must specify gene or annotations')
             annotated_variants = getPatientVariantAnnotation(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.annotations, gene = 'none')
             print(annotated_variants)
-        
+        #END_NEW
         end = time.time()
         e = int(end - start)
         print('\n\n Time elapsed:\n\n')

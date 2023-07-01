@@ -72,7 +72,7 @@ def createStreams(chainName, multichainLoc, datadir):
     makeStream(chainName, "MAF_chrom_y", multichainLoc, datadir)
 
     #GWAS stream
-    makeStream(chainName, "GWAS", multichainLoc, datadir)  
+    makeStream(chainName, "analysis", multichainLoc, datadir)  
 
     return
 

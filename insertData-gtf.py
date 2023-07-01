@@ -135,7 +135,6 @@ def publishToGeneStream(chainName, multichainLoc, datadir, streamName, streamKey
 # In[42]:
 
 
-###CONSIDER MAKING IT ALL POSITIONS IN 1 GENE AS ENTRY TO SAVE ON INSERTION SPACE
 def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile):
     '''
     Extract relevant data for the gene including position, feature, type etc
@@ -161,7 +160,7 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
     output = subprocess.check_output(request, shell = True)  
     variants = output.decode('utf-8').split(' ')[:-1]
     variants = [int(v) for v in variants]
-
+    #BEGIN_NEW#
     ##get annotations
     clinvar =pd.read_csv(f'{annotation_path}/clinvar_annot.txt')
     vep = pd.read_csv(f'{annotation_path}/vep_annot.txt')
@@ -188,9 +187,7 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
         streamValues = json.dumps({'json': streamValues})
 
         publishToVariantStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
-
-# In[43]:
-
+    #END_NEW#
 
 def publishGTF(arguments):
     '''
@@ -208,10 +205,6 @@ def publishGTF(arguments):
     return
 
 
-
-# In[ ]:
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-dp", "--dataPath", type = str, help = "path of data to add to chain")
@@ -220,7 +213,7 @@ def main():
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
     parser.add_argument("-gp", "--genepaths", help = "path to GTF files")
     parser.add_argument("-vp", "--variantpaths", help = "path to VCF files")
-    parser.add_argument("-ap", "--annotationpath", help = "path to annotations")
+    parser.add_argument("-ap", "--annotationpath", help = "path to annotations") #NEW_LINE
     parser.add_argument("-ch", "--chromosomes", help = "chromosomes to add", default = "all")
     args = parser.parse_args()
 

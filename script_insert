@@ -1,11 +1,11 @@
 #!/usr/bin/bash
-#SBATCH --job-name=12k_chain
+#SBATCH --job-name=test_chain
 #SBATCH --partition=pe2
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=aelhussein@nygenome.org
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=200G
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=50G
 #SBATCH --time=150:00:00
 
 
@@ -14,9 +14,10 @@ module load multichain
 module load bcftools
 conda activate blockchain_env
 
-CN=12k_chain
+CN=test_chain
 DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
 PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/code/16k_scalability
+AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
 
 #SAMPLE NUMBERS
 PPL=12000
@@ -33,6 +34,7 @@ python buildChain.py -cn=$CN --datadir=$DR
 #multichaind $CN --datadir=$DR -daemon
 
 #CLINICAL
+
 python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
 
 python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL
@@ -64,7 +66,13 @@ python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf
 
 python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_BC
 
+##Analysis
+python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
+
 ##GTF
 python createStream-gtf.py -cn=$CN -dr=$DR
 
 python insertData-gtf.py -cn=$CN -dr=$DR -gp=$PT/data/gtf -vp=$PT/data/vcf/wgs -ap=$PT/data/annotations
+
+
+

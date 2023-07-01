@@ -8,7 +8,7 @@
 insertData-variant.py
 Inserts data from VCF files (variant data)
 Usage: $ python insertData.py -cn=<chain name> -dr=<Chain path> -vf=<VCF path>
-modified by AE 03/2023
+modified by AE 07/2023
 '''
 
 import sys
@@ -433,12 +433,13 @@ def publishVariants(fields):
         ##publish MAF data
         publishMAF(chainName, multichainLoc, datadir, MAF, chrom)
         ##publish mapping of positions added
-        #publishPositions(chainName, multichainLoc, datadir, positions, chrom)
+        publishPositions(chainName, multichainLoc, datadir, positions, chrom)
 
         print('Inserted {}'.format(variantFile))
 
     return
 
+#BEGIN_NEW#
 def metadataPerson(metaFile, variantFile):
     '''
     load metadata associated with the samples in the variant file
@@ -496,7 +497,7 @@ def publishMetadata(chainName, multichainLoc, datadir, meta):
                 str('{}'.format(streamValues))]
             procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             procPublish.wait()
-
+#END_NEW#
 
 def main():
     parser = argparse.ArgumentParser()
@@ -504,7 +505,7 @@ def main():
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
-    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file")
+    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file") #NEWLINE
     parser.add_argument("-vf", "--variantfile", help = "variant files to add", default = "all")
     parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
     args = parser.parse_args()
@@ -519,13 +520,14 @@ def main():
     try:
         subscribeToStreams(args.chainName, args.multichainLoc, args.datadir)
         print('Subscribed to streams') 
-        
-        paths = loadFilePaths(args.dataPath, args.variantfile)
 
+        #BEGIN_NEW#
         #publish metadata
         meta, _ = metadataPerson(args.metafile, paths[0])
         publishMetadata(args.chainName, args.multichainLoc, args.datadir, meta)
-
+        #END_NEW#
+        
+        paths = loadFilePaths(args.dataPath, args.variantfile)
         cpu = min(cpu, len(paths))
         paths_split = np.array_split(paths, cpu)
         arguments = []
@@ -549,7 +551,7 @@ def main():
     
     except Exception as e:
         print(e)
-        sys.stderr.write("\nERROR: Failed stream publishing variant. Please try again.\n")
+        sys.stderr.write("\nERROR: Failed stream publishing analysis. Please try again.\n")
         quit()
         
 
