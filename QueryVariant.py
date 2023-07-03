@@ -639,7 +639,7 @@ def publishToAuditstream(chainName, multichainLoc, datadir, queryCommand):
 
 def main():
     parser = argparse.ArgumentParser()
-    action_choices = ['variant', 'person', 'gene', 'maf', 'meta', 'annot'] #NEW_LINE
+    action_choices = ['variant', 'person', 'gene', 'maf', 'annot'] #NEW_LINE
     parser.add_argument('--view', choices=action_choices)
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
@@ -650,7 +650,7 @@ def main():
     parser.add_argument("-pi", "--person_ids", required=(action_choices[1] in sys.argv), help = "person_ids to search")
     parser.add_argument("-gn", "--gene", required=(action_choices[2] in sys.argv), help = "genes to search")
     parser.add_argument("-ir", "--inputRange", required=(action_choices[3] in sys.argv), help = "MAF range to search")
-    parser.add_argument("-md", "--metadata", required=([action_choices[i] for i in (0,4)] in sys.argv), help = "metadata to search or filter on", default="none") #NEW_LINE
+    parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default="none") #NEW_LINE
     parser.add_argument("-at", "--annotations", required=(action_choices[5] in sys.argv), help = "annotations to search", default="none") #NEW_LINE
 
     args = parser.parse_args()
@@ -668,12 +668,8 @@ def main():
 
         elif args.view == action_choices[3]:
             MAFqueries(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.inputRange)
-        #BEGIN_NEW#
+        #BEGIN_NEW#        
         elif args.view == action_choices[4]:
-            all_patient_ids = queryMetadata(args.chainName, args.multichainLoc, args.datadir, args.metadata)
-            print(all_patient_ids)
-        
-        elif args.view == action_choices[5]:
             if args.annotations == 'none':
                  if (not hasattr(args, 'gene')) or (args.gene is None) or (args.gene == 'none'):
                      print('Must specify gene or annotations')

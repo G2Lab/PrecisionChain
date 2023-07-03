@@ -164,6 +164,31 @@ def queryKinship(chainName, datadir, sampleSearch):
     print(relationships)
     return relationships
 
+# Metadata queries
+def queryMetadata(chainName, multichainLoc, datadir, search_values):
+    '''
+    Extract metadata for patients
+    Inputs:
+        search values - list of metadata types to query. use of this query alone is intended with general metadata searches e.g. variant calling or seq_machine
+    Output:
+        dictionary with {search_key:{sub_key: list}}, sub_key is the specific value associate with each general metadata search 
+    '''
+    #Metadata query
+    queryCommand = 'multichain-cli {} -datadir={} liststreamitems mappingData_metadata'.format(chainName, datadir)
+    items = subprocess.check_output(queryCommand.split())
+    matches = json.loads(items, parse_int= int)
+    #Parse the search values specified
+    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    all_patient_ids = {}
+    search_values = search_values.split(',')
+    for search_value in search_values:
+        filtered_dicts = [d for d in matches if all(key in d['keys'] for key in [search_value])]
+        return_value = [[x for x in d["keys"] if x!=search_value][0] for d in filtered_dicts]
+        patient_ids = {key:d['data']['json'] for d, key in zip(filtered_dicts, return_value)}
+        all_patient_ids[search_value] = patient_ids
+    print(all_patient_ids)
+    return all_patient_ids
+
 
 def publishToAuditstream(chainName, datadir, queryCommand):
     #load wallet
@@ -196,13 +221,14 @@ def publishToAuditstream(chainName, datadir, queryCommand):
 
 def main():
     parser = argparse.ArgumentParser()
-    action_choices = ['pca', 'kin']
+    action_choices = ['pca', 'kin', 'meta']
     parser.add_argument('--view', choices=action_choices)
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
     parser.add_argument("-ss", "--sampleSearch", required=(action_choices[0:2]in sys.argv), help = "samples to search")
     parser.add_argument("-ks", "--kSearch", required=(action_choices[0]in sys.argv), help = "k loadings to search", default = 20)
+    parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default="none") 
 
     args = parser.parse_args()
     start = time.time()
@@ -214,6 +240,9 @@ def main():
         elif args.view == action_choices[1]:
             #Kinship
             queryKinship(args.chainName, args.datadir, args.sampleSearch)
+        elif args.view == action_choices[2]:
+            #Metadata
+            queryMetadata(args.chainName, args.multichainLoc, args.datadir, args.metadata)
         
         end = time.time()
         e = int(end - start)

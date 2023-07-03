@@ -16,7 +16,7 @@ module load plink
 conda activate blockchain_env
 
 #Process VCF files
-DP=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
+DP=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/code/16k_scalability/data/preprocessing
 python preprocessVCF.py -dp=$DP
 
 
