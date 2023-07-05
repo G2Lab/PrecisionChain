@@ -88,7 +88,7 @@ def extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys):
         matches.extend(json.loads(items, parse_int= int))
     ids = []
     for match in matches:
-        ids.append(int(match['keys'][0]))
+        ids.append(int(match['keys'][1])) #CHANGE_LINE#
     return(list(set(ids)))
 
 

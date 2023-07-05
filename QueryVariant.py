@@ -57,13 +57,16 @@ def extractVariantsGenotypes(position, genotype):
         genotype - the user-inputted genotype positions
     '''
     position = position.replace(' ','').split(',')
-    genotype = genotype.replace(' ','').split(',')
-    ##if heterozygous gt queried, parse gt to right format stored in blockchain (i.e. 1|0 )
-    for gt in genotype:
-        if gt[0] < gt[2]:
-            genotype.remove(gt)
-            genotype.append('{}|{}'.format(gt[2], gt[0]))
-    genotype = list(set(genotype))
+    if genotype != 'all': #NEW_LINE#
+        genotype = genotype.replace(' ','').split(',')
+        ##if heterozygous gt queried, parse gt to right format stored in blockchain (i.e. 1|0 )
+        for gt in genotype:
+            if gt[0] < gt[2]:
+                genotype.remove(gt)
+                genotype.append('{}|{}'.format(gt[2], gt[0]))
+        genotype = list(set(genotype))
+    else: #NEW_LINE#
+        genotype = ['0|0', '1|0', '1|1'] #NEW_LINE#
     return position, genotype
     
 
@@ -257,11 +260,21 @@ def queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id):
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems person_chrom_{} {} false 9999999999999999'.format(chainName, datadir, chrom, person_id)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
+    ##BEGIN_NEW#
+    for i, match in enumerate(matches):
+        try:
+            matches[i] = match['data']['json']
+        except:
+                txid = match['data']['txid']
+                queryCommand = f'multichain-cli {chainName} -datadir={datadir} gettxoutdata "{txid}" 0'
+                items = subprocess.Popen(queryCommand, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                returned, _ = items.communicate()
+                matches[i] = json.loads(returned.decode('utf-8'))['json']
+                
     person_variants_df = pd.DataFrame()
     for i, match in enumerate(matches):
         try:
-            person_variants = match['data']['json']
-            person_variants_df_ = pd.DataFrame.from_dict(person_variants, orient = 'index', columns = [
+            person_variants_df_ = pd.DataFrame.from_dict(match, orient = 'index', columns = [
             'ref_allele_{}'.format(person_id),
             'alt_allele_{}'.format(person_id),
             'gt_{}'.format(person_id)])
@@ -269,6 +282,7 @@ def queryPersonChrom(chainName, multichainLoc, datadir, chrom, person_id):
 
         except:
             pass
+    ##END_NEW#
     deduped_persons = person_variants_df[~person_variants_df.index.duplicated(keep='last')]    
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     
@@ -287,9 +301,16 @@ def extractAllPosition(chainName, multichainLoc, datadir, chrom):
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants chrom_{}'.format(chainName, datadir, chrom)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
-    if matches and matches[0]['data'].get('txid'):
-        return get_json_payload_from_txid(matches[0]['data'].get('txid'), chainName, datadir)
-    return matches[0]['data']['json']
+    #BEGIN_NEW#
+    try:
+        positions = matches[0]['data']['json']
+    except:
+        items = get_json_payload_from_txid(matches[0]['data'].get('txid'), chainName, datadir)
+        matches = json.loads(items, parse_int= int)
+        positions = matches['json']
+    return [p.split(':') for p in positions]
+    #END_NEW#
+
 
 
 # In[61]:
@@ -323,9 +344,11 @@ def queryPersonsChrom(chainName, multichainLoc, datadir, chrom, person_ids, pos)
         person_df.iloc[:,1:] = person_df.iloc[:,1:].fillna('0|0')
         ##this extract all positions and identifies which ones are missing from dataframe and so must be 0|0 for all patients
         allPositions = extractAllPosition(chainName, multichainLoc, datadir, chrom)
-        homo_pos = list(set(allPositions) - set(person_df.index))
+        homo_pos = list(set([p[0] for p in allPositions]) - set(person_df.index)) #NEW_LINE#
         homo = pd.DataFrame(index = homo_pos, columns = person_df.columns)
         homo.iloc[:,2:] = homo.iloc[:,2:].fillna('0|0')
+        homo_details = pd.DataFrame(allPositions, columns = ['pos', 'ref_allele', 'alt_allele']).set_index('pos') #NEW_LINE#
+        homo = homo.combine_first(homo_details)[homo.columns] #NEW_LINE#
         person_full_df  = pd.concat([person_df, homo])
     ##filter out positions not of interest
     if pos != 'all':
@@ -508,6 +531,7 @@ def queryAnnotationVariant(chainName, multichainLoc, datadir, chrom, annots):
     Output:
         dictionary of dataframes (one for each annotation type searched). each df contains information on the variants with that annotation
     '''
+    annots = annots.split(',')
     columns = { 'vep': ['Position', 'GeneID', 'GeneName', '#Uploaded_variation', 'Consequence'],
                     'clinvar': ['Position', 'GeneID', 'GeneName', 'ClinicalSignificance', 'ClinSigSimple', 'PhenotypeList'],
                     'cadd':['Position', 'GeneID', 'GeneName' , 'AnnoType', 'Consequence', 'ConsScore', 'ConsDetail', 'RawScore', 'PHRED']}
@@ -567,7 +591,7 @@ def queryVariantAnnotations(chainName, multichainLoc, datadir, chrom, gene):
     return all_query_data
 
 
-def getPatientVariantAnnotation(chainName, multichainLoc, datadir, chrom, annots, gene = 'none'):
+def getPatientVariantAnnotation(chainName, multichainLoc, datadir, chrom, annots, gene):
     '''
     Extract patients with non-reference alleles in variants with annotations
     Inputs:
@@ -646,12 +670,12 @@ def main():
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
     parser.add_argument("-ch", "--chromosomes", help = "chromosome to search", default = '')
     parser.add_argument("-ps", "--positions",required=(action_choices[0:2] in sys.argv), help = "positions to search", default = "all")
-    parser.add_argument("-gt", "--genotypes", required=(action_choices[0] in sys.argv), help = "genotypes to search")
+    parser.add_argument("-gt", "--genotypes", required=(action_choices[0] in sys.argv), help = "genotypes to search", default = "all") #NEW_LINE#
     parser.add_argument("-pi", "--person_ids", required=(action_choices[1] in sys.argv), help = "person_ids to search")
-    parser.add_argument("-gn", "--gene", required=(action_choices[2] in sys.argv), help = "genes to search")
+    parser.add_argument("-gn", "--gene", required=(action_choices[2] in sys.argv), help = "genes to search", default = 'none') #NEW_LINE#
     parser.add_argument("-ir", "--inputRange", required=(action_choices[3] in sys.argv), help = "MAF range to search")
     parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default="none") #NEW_LINE
-    parser.add_argument("-at", "--annotations", required=(action_choices[5] in sys.argv), help = "annotations to search", default="none") #NEW_LINE
+    parser.add_argument("-at", "--annotations", required=(action_choices[4] in sys.argv), help = "annotations to search", default="none") #NEW_LINE
 
     args = parser.parse_args()
     start = time.time()
@@ -664,7 +688,8 @@ def main():
             queryPersonsChroms(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.person_ids, args.positions)
         
         elif args.view == action_choices[2]:
-             extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosomes)
+             variants = extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosomes) #NEW_LINE#
+             print(variants) #NEW_LINE#
 
         elif args.view == action_choices[3]:
             MAFqueries(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.inputRange)
@@ -673,7 +698,7 @@ def main():
             if args.annotations == 'none':
                  if (not hasattr(args, 'gene')) or (args.gene is None) or (args.gene == 'none'):
                      print('Must specify gene or annotations')
-            annotated_variants = getPatientVariantAnnotation(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.annotations, gene = 'none')
+            annotated_variants = getPatientVariantAnnotation(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.annotations, args.gene)
             print(annotated_variants)
         #END_NEW
         end = time.time()

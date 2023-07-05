@@ -118,7 +118,7 @@ def extractPositions(variantFile):
     positions = [output.decode('utf-8').split('\n')[0]]
     
     #get every 100th positions
-    request = "bcftools query -f \'%POS\n\' {} |  awk \'NR % 100 == 0\'".format(variantFile)
+    request = "bcftools query -f \'%POS\n\' {} | head -3000 |  awk \'NR % 100 == 0\'".format(variantFile)
     output = subprocess.check_output(request, shell = True)
     positions.extend(output.decode('utf-8').split('\n'))
 
@@ -136,7 +136,7 @@ def extractPositions(variantFile):
     
     
     #get last position
-    request = 'bcftools query -f \'%POS\n\' {} | tail -n 1'.format(variantFile)
+    request = 'bcftools query -f \'%POS\n\' {} | head -3000 | tail -n 1'.format(variantFile)
     output = subprocess.check_output(request, shell = True)
     last = output.decode('utf-8').split('\n')[0]
     pos_regions[s-1][-1] = last
@@ -218,7 +218,8 @@ def extractVariant(variantFile, positions, pos_region, sample_person, colnames, 
     output = subprocess.check_output(request, shell = True) 
     df = pd.read_csv(BytesIO(output), delim_whitespace=True, usecols=[x for x in range(num_cols)], names = colnames, index_col = 'pos')
     #keep track of positions added (for mapping)
-    positions.extend(df.index)
+    pos_ref_alt = [f'{pos}:{ref}:{alt}' for pos, ref, alt in zip(df.index, df['ref'],df['alt'])] #NEW_LINE#
+    positions.extend(pos_ref_alt) #NEW_LINE#
     #get dictionary of samples associated with each genotype
     alt_genotypes = pd.DataFrame(df.apply(extractRelevantGenotypes, axis = 1))
     #wrangle the dataset to be genotype:sample_ids
@@ -389,6 +390,8 @@ def publishPositions(chainName, multichainLoc, datadir, positions, chrom):
         positions: list of positions added from vcf file
         chrom: chromosome positions come from
     '''
+    positions = str(positions) #NEW_LINE#
+    positions = positions.replace("'", '"') #NEW_LINE#
     streamName = 'mappingData_variants'
     streamKeys = 'chrom_{}'.format(chrom)
     streamValues = '{'+'"json":{}'.format(positions) + '}'
@@ -520,14 +523,15 @@ def main():
     try:
         subscribeToStreams(args.chainName, args.multichainLoc, args.datadir)
         print('Subscribed to streams') 
-
-        #BEGIN_NEW#
-        #publish metadata
-        meta, _ = metadataPerson(args.metafile, paths[0])
-        publishMetadata(args.chainName, args.multichainLoc, args.datadir, meta)
-        #END_NEW#
         
         paths = loadFilePaths(args.dataPath, args.variantfile)
+        
+        #BEGIN_NEW#
+        #publish metadata
+        #meta, _ = metadataPerson(args.metafile, paths[0])
+        #publishMetadata(args.chainName, args.multichainLoc, args.datadir, meta)
+        #END_NEW#
+        
         cpu = min(cpu, len(paths))
         paths_split = np.array_split(paths, cpu)
         arguments = []

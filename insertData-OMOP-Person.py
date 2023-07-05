@@ -49,8 +49,9 @@ def parseTables(tables):
 # In[3]:
 
 def loadPeople(path, num):
-    people = pd.read_csv(f'{path}person.csv')
-    people = people['person_id'].iloc[:num].values 
+    path_ = "/".join(path.split('/')[:-2]) #NEW_LINE#
+    people = pd.read_csv(f'{path_}/samples/samples_used_{num}.csv', usecols = [0])  #NEW_LINE#
+    people = people['id'].values  #NEW_LINE#
     return people
 
 def loadPatients(path, people):

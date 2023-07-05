@@ -33,10 +33,11 @@ warnings.simplefilter("ignore")
 
 # In[3]:
 
-def loadPeople(dataPath, num):
-    people = pd.read_csv(f'{dataPath}person.csv')
-    people = pd.read_csv(f'{dataPath}person.csv')
-    return people['person_id'].iloc[:num].values 
+def loadPeople(path, num):
+    path_ = "/".join(path.split('/')[:-2])  #NEW_LINE#
+    people = pd.read_csv(f'{path_}/samples/samples_used_{num}.csv', usecols = [0])  #NEW_LINE#
+    people = people['id'].values  #NEW_LINE#
+    return people
 
 
 def parseTables(tables):

@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-#SBATCH --job-name=12k_chain
+#SBATCH --job-name=test_chain
 #SBATCH --partition=pe2
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=aelhussein@nygenome.org
@@ -14,17 +14,17 @@ module load multichain
 module load bcftools
 conda activate blockchain_env
 
-CN=12k_chain
+CN=test_chain
 DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
 PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/code/16k_scalability
 AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
 
 #SAMPLE NUMBERS
-PPL=12000
-PPL_GS=2000
-PPL_ES=2000
-PPL_AF=4000
-PPL_BC=4000
+PPL=100
+PPL_GS=100
+PPL_ES=0
+PPL_AF=0
+PPL_BC=0
 
 
 #BUILD CHAIN
@@ -47,27 +47,27 @@ multichaind $CN --datadir=$DR -daemon
 #python createStream-variants.py -cn=$CN --datadir=$DR
 
 ##WGS
-#python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_GS 
+#python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS 
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_GS
+#python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS
 
 ##WES
-python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_ES
+#python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_ES
+#python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES
 
 ##AFFYMETRIX
-python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_AF
+#python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_AF
+#python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF
 
 ##BEADCHIP
-python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_BC
+#python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_BC
+#python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC
 
 ##Analysis
-python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
+python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
 
 ##GTF
 python createStream-gtf.py -cn=$CN -dr=$DR
