@@ -123,10 +123,14 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
     matches = []
     
     for personid in personids:
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics_ {}'.format(chainName, datadir, personid)
         items = subprocess.check_output(queryCommand.split())
         matches += json.loads(items, parse_int= int)
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    #BEGIN_NEW#
+    demo = [match_['data']['json'] for match_ in matches]
+    print(demo)
+    #END_NEW#
     return matches
 
 

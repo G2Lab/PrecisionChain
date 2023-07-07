@@ -52,7 +52,7 @@ def querySamplePCA(chainName, datadir, sampleSearch, kSearch):
         kSearch - number of PCs to get
     '''
     #Extract data
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {}'.format(chainName, datadir, "PCA")
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {} false 9999999'.format(chainName, datadir, "PCA")
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     publishToAuditstream(chainName, datadir, queryCommand)
@@ -64,10 +64,11 @@ def querySamplePCA(chainName, datadir, sampleSearch, kSearch):
     kSearch = int(kSearch)
     if sampleSearch != ['none']:
         pc_df = pc_df.loc[sampleSearch]
+        pc_df = pc_df.drop_duplicates()
     if kSearch != 20:
         pc_df = pc_df.iloc[:,:kSearch]
-    print(pc_df)
-    return pc_df
+    print(pc_df.to_json())
+    return pc_df.to_json()
 # In[ ]:
 
 def querySampleRelatedness(chainName, datadir, sampleSearch):
@@ -77,7 +78,7 @@ def querySampleRelatedness(chainName, datadir, sampleSearch):
         sampleSearch - sampled ids to extract
     '''
     #Extract data
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {}'.format(chainName, datadir, 'Relatedness')
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {} false 99999999'.format(chainName, datadir, 'Relatedness')
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     publishToAuditstream(chainName, datadir, queryCommand)
@@ -89,7 +90,7 @@ def querySampleRelatedness(chainName, datadir, sampleSearch):
     if sampleSearch != ['none']:
         rl_df = rl_df.loc[sampleSearch]
     #AF
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {}'.format(chainName, datadir, 'AF')
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {} false 99999999'.format(chainName, datadir, 'AF')
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     txid = matches[0]['data']['txid']
@@ -161,11 +162,11 @@ def assess_kinship(rl_df):
 def queryKinship(chainName, datadir, sampleSearch):
     rl_df, af = querySampleRelatedness(chainName, datadir, sampleSearch)
     relationships = assess_kinship(rl_df)
-    print(relationships)
-    return relationships
+    print(relationships.to_json())
+    return relationships.to_json()
 
 # Metadata queries
-def queryMetadata(chainName, multichainLoc, datadir, search_values):
+def queryMetadata(chainName, datadir, search_values):
     '''
     Extract metadata for patients
     Inputs:
@@ -178,7 +179,7 @@ def queryMetadata(chainName, multichainLoc, datadir, search_values):
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     #Parse the search values specified
-    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    publishToAuditstream(chainName, datadir, queryCommand)
     all_patient_ids = {}
     search_values = search_values.split(',')
     for search_value in search_values:
@@ -242,7 +243,7 @@ def main():
             queryKinship(args.chainName, args.datadir, args.sampleSearch)
         elif args.view == action_choices[2]:
             #Metadata
-            queryMetadata(args.chainName, args.multichainLoc, args.datadir, args.metadata)
+            queryMetadata(args.chainName, args.datadir, args.metadata)
         
         end = time.time()
         e = int(end - start)

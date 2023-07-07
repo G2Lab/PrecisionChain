@@ -118,7 +118,7 @@ def extractPositions(variantFile):
     positions = [output.decode('utf-8').split('\n')[0]]
     
     #get every 100th positions
-    request = "bcftools query -f \'%POS\n\' {} | head -3000 |  awk \'NR % 100 == 0\'".format(variantFile)
+    request = "bcftools query -f \'%POS\n\' {} | head -20000 |  awk \'NR % 100 == 0\'".format(variantFile)
     output = subprocess.check_output(request, shell = True)
     positions.extend(output.decode('utf-8').split('\n'))
 
@@ -136,7 +136,7 @@ def extractPositions(variantFile):
     
     
     #get last position
-    request = 'bcftools query -f \'%POS\n\' {} | head -3000 | tail -n 1'.format(variantFile)
+    request = 'bcftools query -f \'%POS\n\' {} | head -20000 | tail -n 1'.format(variantFile)
     output = subprocess.check_output(request, shell = True)
     last = output.decode('utf-8').split('\n')[0]
     pos_regions[s-1][-1] = last
@@ -442,65 +442,6 @@ def publishVariants(fields):
 
     return
 
-#BEGIN_NEW#
-def metadataPerson(metaFile, variantFile):
-    '''
-    load metadata associated with the samples in the variant file
-    Input:
-        metaFile - path where the metadata is held
-        variantFiles - files to be added (one per chromosome)
-    '''
-    
-    #extract samples from vcf file
-    request = 'bcftools query -l {}'.format(variantFile)
-    output = subprocess.check_output(request, shell = True)
-    samples = output.decode().split()
-    #metadata
-    meta = pd.read_csv(f'{metaFile}')
-    meta['id'] = meta['id'].astype(str)
-    #get dict in the same order as the vcf file
-    meta_seq = meta[meta['id'].isin(samples)]
-    return meta_seq, samples
-
-def publishMetadata(chainName, multichainLoc, datadir, meta):
-    '''
-    Publish the positions added into mapping stream
-    Input:
-        positions: list of positions added from vcf file
-        chrom: chromosome positions come from
-    '''
-    ## metadata insert
-    for _, row in meta.iterrows():
-        row['id']
-        streamName = 'mappingData_metadata'
-        streamKeys = '{}'.format(row['id'])
-        streamValues = '{'+'"json":{}'.format(json.dumps(list(row.values[1:]))) + '}'
-        publishCommand = [multichainLoc+'multichain-cli', 
-            str('{}'.format(chainName)), 
-            str('-datadir={}'.format(datadir)),
-            'publish',
-            str('{}'.format(streamName)), 
-            str('{}'.format(streamKeys)),
-            str('{}'.format(streamValues))]
-        procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        procPublish.wait()
-
-    for col in meta.columns[1:]:
-        for values in meta[col].unique():
-            ids = list(meta.loc[:,'id'][meta[col] ==values].values)
-            streamName = 'mappingData_metadata'
-            streamKeys = '["{}", "{}"]'.format(col, values)
-            streamValues = '{'+'"json":{}'.format(json.dumps(ids)) + '}'
-            publishCommand = [multichainLoc+'multichain-cli', 
-                str('{}'.format(chainName)), 
-                str('-datadir={}'.format(datadir)),
-                'publish',
-                str('{}'.format(streamName)), 
-                str('{}'.format(streamKeys)),
-                str('{}'.format(streamValues))]
-            procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            procPublish.wait()
-#END_NEW#
 
 def main():
     parser = argparse.ArgumentParser()
@@ -525,12 +466,6 @@ def main():
         print('Subscribed to streams') 
         
         paths = loadFilePaths(args.dataPath, args.variantfile)
-        
-        #BEGIN_NEW#
-        #publish metadata
-        #meta, _ = metadataPerson(args.metafile, paths[0])
-        #publishMetadata(args.chainName, args.multichainLoc, args.datadir, meta)
-        #END_NEW#
         
         cpu = min(cpu, len(paths))
         paths_split = np.array_split(paths, cpu)

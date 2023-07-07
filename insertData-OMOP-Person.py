@@ -61,6 +61,7 @@ def loadPatients(path, people):
 
     ##load table
     df = pd.read_csv(path)
+    df = df.drop_duplicates('person_id') #NEW_LINE#
     df['stream'] = pd.qcut(df['person_id'], q = 20, labels =np.arange(1,21,1), duplicates = 'drop')
     df = df[df['person_id'].isin(people)]
     df['person_id'] = df['person_id'].astype(str)
@@ -191,7 +192,7 @@ def publishToMappingStreams(chainName, multichainLoc, datadir, person_df):
                 race = row['race_concept_id'].iloc[0]
             streamKeys = row['person_id'].iloc[0], row['gender_concept_id'].iloc[0], race
 
-            streamValues ='{"json":'+row.to_json(orient = 'records').strip('[').strip(']')+'}'
+            streamValues ='{"json":'+row.iloc[0].to_json()+'}' #NEW_LINE#
             publishCommand = [multichainLoc+'multichain-cli', 
                 str('{}'.format(chainName)), 
                 str('-datadir={}'.format(datadir)),
@@ -282,7 +283,6 @@ def main():
         person_df = loadPatients(args.personPath, people)
         publishToMappingStreams(args.chainName, args.multichainLoc, args.datadir, person_df)
         print('Published to Mapping streams')
-
         with multiprocessing.Pool(processes=cpu) as pool:
             for table in tables:
                 concept_type, keys_df, data_df = loadData(args.dataPath, table, people)

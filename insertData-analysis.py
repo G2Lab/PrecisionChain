@@ -82,9 +82,9 @@ def metadataPerson(metaFile, variantFile, numPeople):
     '''
     
     #extract samples from vcf file
-    request = 'bcftools query -l {}'.format(variantFile)
+    request = 'bcftools query -l {} | head -n {}'.format(variantFile, numPeople)
     output = subprocess.check_output(request, shell = True)
-    samples = output.decode().split()[:numPeople]
+    samples = output.decode().split()
     #metadata
     meta = pd.read_csv(f'{metaFile}')
     meta['id'] = meta['id'].astype(str)
@@ -282,10 +282,10 @@ def main():
 
         #publish metadata
         meta, samples = metadataPerson(args.metafile, paths[0], int(args.numberPeople))
-        #publishMetadata(args.chainName, args.multichainLoc, args.datadir, meta)
+        publishMetadata(args.chainName, args.multichainLoc, args.datadir, meta)
         
         #publish pca
-        #publishSamplePC(args.chainName, args.multichainLoc, args.datadir, args.pcafile, samples)
+        publishSamplePC(args.chainName, args.multichainLoc, args.datadir, args.pcafile, samples)
 
         #publish kinship
         publishRelatednessSNP(args.chainName, args.datadir, samples, args.relatedfile)

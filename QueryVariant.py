@@ -66,7 +66,7 @@ def extractVariantsGenotypes(position, genotype):
                 genotype.append('{}|{}'.format(gt[2], gt[0]))
         genotype = list(set(genotype))
     else: #NEW_LINE#
-        genotype = ['0|0', '1|0', '1|1'] #NEW_LINE#
+        genotype = ['1|0', '1|1', '0|0'] #NEW_LINE#
     return position, genotype
     
 
@@ -83,10 +83,16 @@ def homozgyousPersons(chainName, multichainLoc, datadir, chrom, variant):
         variant - dictionary with person_ids for samples with non-reference homozygous alles
     '''
     ##command to extract all the samples added
-    queryCommand = 'multichain-cli {} -datadir={} liststreamitems mappingData_variants'.format(chainName, datadir)
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants samples'.format(chainName, datadir)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
-    all_persons = matches[0]['data']['json']
+    #BEGIN_NEW#
+    try:
+        all_persons = matches[0]['data']['json']
+    except:
+        items = get_json_payload_from_txid(matches[0]['data'].get('txid'), chainName, datadir)
+        all_persons = json.loads(items)['json']
+    #END_NEW#
     ##extract the non-reference personIDs
     non_ref = []
     for persons in variant.values():
