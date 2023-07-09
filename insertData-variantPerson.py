@@ -78,7 +78,7 @@ def loadFilePaths(dataPath, variantFiles):
 # In[5]:
 
 
-def metadataPerson(metaFile, variantFile):
+def metadataPerson(metaFile, variantFile, people):
     '''
     load metadata associated with the samples in the variant file
     Input:
@@ -87,7 +87,7 @@ def metadataPerson(metaFile, variantFile):
     '''
     
     #extract samples from vcf file
-    request = 'bcftools query -l {}'.format(variantFile)
+    request = 'bcftools query -l {} | head -n {}'.format(variantFile, people) #NEW_LINE#
     output = subprocess.check_output(request, shell = True)
     samples = output.decode().split()
     #metadata
@@ -250,7 +250,7 @@ def publishToDataStreams(fields):
     '''
     for variantFile in paths:
         #load mapping dictionary and file paths
-        meta, samples = metadataPerson(metaFile, variantFile)
+        meta, samples = metadataPerson(metaFile, variantFile, people)
         publishMappingPerson(chainName, multichainLoc, datadir, meta)
         for sample_id in samples:
             streamName, streamValues = extractPersonVariants(variantFile, sample_id)

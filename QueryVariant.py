@@ -422,7 +422,15 @@ def MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRange
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems MAF_chrom_{} {} false 99999'.format(chainName, datadir, chrom, streamRange)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
-    MAF_variants = matches[0]['data']['json']
+    #BEGIN_NEW#
+    try:
+        MAF_variants = matches[0]['data']['json']
+    except:
+        txid = matches[0]['txid']
+        items = get_json_payload_from_txid(txid, chainName, datadir)
+        matches = json.loads(items, parse_int= int)
+        MAF_variants = matches['json']
+    #END_NEW#
     try:
         MAF_variants = json.loads(MAF_variants.replace("(",'"(').replace(")",')"'))
     except:

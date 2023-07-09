@@ -33,6 +33,7 @@ from datetime import datetime
 from pprint import pprint as pp
 import json
 import pdb
+import itertools
 from json.decoder import JSONDecodeError
 warnings.simplefilter(action='ignore')
 
@@ -435,7 +436,7 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
         #END_NEW#
         alleleMatch = len(set( alleleMatch ))
         alleleMatch = samples - alleleMatch
-    return round(alleleMatch / samples,2)
+    return round(alleleMatch / samples,3)
 
 
 # In[554]:
@@ -470,7 +471,7 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
                 items = get_json_payload_from_txid(match_['data'].get('txid'), chainName, datadir)
                 match_ = json.loads(items, parse_int= int)
                 variants_person.append(match_['json'])
-        variants_per
+        variants_person = dict(itertools.chain.from_iterable(d.items() for d in variants_person))
         variants_person_filtered = {k:v for k,v in variants_person.items() if k in variants}
         for variant in variants_person_filtered:
             try:

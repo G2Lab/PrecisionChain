@@ -85,14 +85,16 @@ def loadFilePaths(dataPath, variantFiles):
 # In[5]:
 
 
-def samplePersons(variantFile, person):
+def samplePersons(metaFile, person):
     '''
     Input:
-        variantFiles - files to be added (one per chromosome)
+        Metadatafile
     '''
-    request = 'bcftools query -l {}| head -n {}'.format(variantFile, person)
-    output = subprocess.check_output(request, shell = True)
-    samples = output.decode().split()
+    #BEGIN_NEW#
+    path_ = "/".join(metaFile.split('/')[:-2]) 
+    samples = pd.read_csv(f'{path_}/samples/samples_used_{person}.csv', usecols = [0]) 
+    samples = samples['id'].values
+    #END_NEW#
     return samples
 
 
@@ -390,27 +392,32 @@ def publishPositions(chainName, multichainLoc, datadir, positions, chrom):
         positions: list of positions added from vcf file
         chrom: chromosome positions come from
     '''
-    positions = str(positions) #NEW_LINE#
-    positions = positions.replace("'", '"') #NEW_LINE#
-    streamName = 'mappingData_variants'
-    streamKeys = 'chrom_{}'.format(chrom)
-    streamValues = '{'+'"json":{}'.format(positions) + '}'
-    publishCommand = [multichainLoc+'multichain-cli', 
-        str('{}'.format(chainName)), 
-        str('-datadir={}'.format(datadir)),
-        'publish',
-        str('{}'.format(streamName)), 
-        str('{}'.format(streamKeys)),
-        str('{}'.format(streamValues))]
-    procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procPublish.wait()
+    #BEGIN_NEW#
+    chunk_size = 2000 if len(positions) > 2000 else len(positions)
+    position_chunks = [positions[i:i + chunk_size] for i in range(0, len(positions), chunk_size)]
+    for position_chunk in position_chunks:
+        position_chunk = str(position_chunk) #NEW_LINE#
+        position_chunk = position_chunk.replace("'", '"') #NEW_LINE#
+        streamName = 'mappingData_variants'
+        streamKeys = 'chrom_{}'.format(chrom)
+        streamValues = '{'+'"json":{}'.format(position_chunk) + '}'
+        publishCommand = [multichainLoc+'multichain-cli', 
+            str('{}'.format(chainName)), 
+            str('-datadir={}'.format(datadir)),
+            'publish',
+            str('{}'.format(streamName)), 
+            str('{}'.format(streamKeys)),
+            str('{}'.format(streamValues))]
+        procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        procPublish.wait()
+    #END_NEW#
 
 
 # In[249]:
 
 
 def publishVariants(fields):
-    chainName, multichainLoc, datadir, variantFiles, person = fields
+    chainName, multichainLoc, datadir, variantFiles, person, metaFile = fields
     '''
     Publish the variant data
     Input:
@@ -418,7 +425,7 @@ def publishVariants(fields):
     '''
     for variantFile in variantFiles:
         #extract samples
-        sample_person = samplePersons(variantFile, person)
+        sample_person = samplePersons(metaFile, person) # NEW_LINE#
         colnames= ['pos', 'ref', 'alt']
         colnames.extend(list(sample_person))
         sample_size = len(colnames) - 3
@@ -471,7 +478,7 @@ def main():
         paths_split = np.array_split(paths, cpu)
         arguments = []
         for paths_split_ins in paths_split:
-            arguments.append((args.chainName, args.multichainLoc, args.datadir, paths_split_ins, person))
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, paths_split_ins, person, args.metafile)) #NEW_LINE#
         pool = multiprocessing.Pool(cpu)
         pool.map(publishVariants, arguments)
         pool.close()

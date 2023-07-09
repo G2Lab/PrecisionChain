@@ -227,7 +227,7 @@ def main():
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
-    parser.add_argument("-ss", "--sampleSearch", required=(action_choices[0:2]in sys.argv), help = "samples to search")
+    parser.add_argument("-ss", "--sampleSearch", required=(action_choices[0:2]in sys.argv), help = "samples to search", default = "none")
     parser.add_argument("-ks", "--kSearch", required=(action_choices[0]in sys.argv), help = "k loadings to search", default = 20)
     parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default="none") 
 
