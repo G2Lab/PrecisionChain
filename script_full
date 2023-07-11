@@ -16,14 +16,14 @@ module load plink
 conda activate blockchain_env
 
 ################Process VCF files################
-DP=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/code/16k_scalability/data/preprocessing
+DP=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public/data/preprocessing
 python preprocessVCF.py -dp=$DP
 
 
 ################CONDUCT PCA ANALYSIS################
 # Set the path to the directory containing the VCF files and PCA variants
-export DP="/gpfs/commons/groups/gursoy_lab/aelhussein/code/16k_scalability/data/preprocessing"
-export filter_file="/gpfs/commons/groups/gursoy_lab/aaelhussein/code/16k_scalability/data/preprocessing/37_38_mapping/pca_variants_18.txt"
+export DP="/gpfs/commons/groups/gursoy_lab/aelhussein/public/data/preprocessing"
+export filter_file="/gpfs/commons/groups/gursoy_lab/aaelhussein/public/data/preprocessing/37_38_mapping/pca_variants_18.txt"
 
 # Filter files for PCA variants
 chromosomes=( $(seq 1 22) )
@@ -41,7 +41,7 @@ bcftools concat -f files.txt -Oz -o merged.vcf.gz
 plink --vcf ${DP}/pca_bigsnpr/merged.vcf.gz --make-bed --out ${DP}/pca_bigsnpr/merged
 
 #Run bigsnpr PCA
-SV="/gpfs/commons/groups/gursoy_lab/aelhussein/code/16k_scalability/data/preprocessing"
+SV="/gpfs/commons/groups/gursoy_lab/aelhussein/public/data/preprocessing"
 RF="merged"
 SF="merged"
 preprocessPCA.R $SV $RF $SF
@@ -49,7 +49,7 @@ preprocessPCA.R $SV $RF $SF
 ################INSERT DATA INTO CHAIN################
 CN=test_chain
 DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
-PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/code/16k_scalability
+PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
 
 #SAMPLE NUMBERS
 PPL=12000

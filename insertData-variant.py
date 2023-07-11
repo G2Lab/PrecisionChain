@@ -85,14 +85,16 @@ def loadFilePaths(dataPath, variantFiles):
 # In[5]:
 
 
-def samplePersons(metaFile, person):
+def samplePersons(metaFile, person, sequencing):
     '''
     Input:
         Metadatafile
     '''
     #BEGIN_NEW#
     path_ = "/".join(metaFile.split('/')[:-2]) 
-    samples = pd.read_csv(f'{path_}/samples/samples_used_{person}.csv', usecols = [0]) 
+    samples = pd.read_csv(f'{path_}/samples/samples_used_{person}.csv', usecols = [0,1]) 
+    samples = samples[samples['sequence'] == sequencing]
+    samples = samples.loc[:person]
     samples = samples['id'].values
     #END_NEW#
     return samples
@@ -213,12 +215,22 @@ def extractVariant(variantFile, positions, pos_region, sample_person, colnames, 
         
     '''
     samples = list(sample_person)
-    num_cols = len(samples) + 3 
-    samples = ','.join(samples)
     #get variant data
-    request = 'bcftools query -r {}:{}-{} -f \'%POS %REF %ALT [ %GT]\n\' -s "{}" {}'.format(chrom, pos_region[0], pos_region[1], samples, variantFile)
-    output = subprocess.check_output(request, shell = True) 
-    df = pd.read_csv(BytesIO(output), delim_whitespace=True, usecols=[x for x in range(num_cols)], names = colnames, index_col = 'pos')
+    #BEGIN_NEW#
+    samples_chunked = [samples[i:i + 500] for i in range(0, len(samples), 500)]
+    df = None
+    for sample_chunk in samples_chunked:
+        colnames= ['pos', 'ref', 'alt'] + sample_chunk
+        samples = ','.join(map(str, sample_chunk))
+        request = f'bcftools query -r {chrom}:{pos_region[0]}-{pos_region[1]} -f \'%POS %REF %ALT [ %GT]\n\' -s "{samples}" {variantFile}'
+        output = subprocess.check_output(request, shell = True) 
+        df_partial = pd.read_csv(BytesIO(output), delim_whitespace=True, names=colnames, index_col='pos')
+        
+        if df is None:  
+            df = df_partial
+        else:
+            df = pd.concat([df, df_partial.drop(['ref', 'alt'], axis=1)], axis=1)
+    #END_NEW#
     #keep track of positions added (for mapping)
     pos_ref_alt = [f'{pos}:{ref}:{alt}' for pos, ref, alt in zip(df.index, df['ref'],df['alt'])] #NEW_LINE#
     positions.extend(pos_ref_alt) #NEW_LINE#
@@ -348,6 +360,7 @@ def extractPreviousMAF(chainName, multichainLoc, datadir, chrom):
         df = pd.DataFrame(output).loc[:,['keys', 'blocktime']]
         #create dataframe of positions and MAF information  
         df[['position', 'ref', 'alt', 'allele', 'count', 'total', 'freq']] = pd.DataFrame(df['keys'].tolist())
+        df['blocktime'] = df['blocktime'].fillna(method='bfill') #NEW_LINE#
         df = df.iloc[df.groupby(['position', 'allele'])['blocktime'].idxmax(),2:].set_index(['position', 'ref','alt','allele'])
         return df
     else:
@@ -417,7 +430,7 @@ def publishPositions(chainName, multichainLoc, datadir, positions, chrom):
 
 
 def publishVariants(fields):
-    chainName, multichainLoc, datadir, variantFiles, person, metaFile = fields
+    chainName, multichainLoc, datadir, variantFiles, person, metaFile, sequencing = fields #NEW_LINE#
     '''
     Publish the variant data
     Input:
@@ -425,7 +438,7 @@ def publishVariants(fields):
     '''
     for variantFile in variantFiles:
         #extract samples
-        sample_person = samplePersons(metaFile, person) # NEW_LINE#
+        sample_person = samplePersons(metaFile, person, sequencing) # NEW_LINE#
         colnames= ['pos', 'ref', 'alt']
         colnames.extend(list(sample_person))
         sample_size = len(colnames) - 3
@@ -459,6 +472,7 @@ def main():
     parser.add_argument("-mf", "--metafile", help = "path to sample metadata file") #NEWLINE
     parser.add_argument("-vf", "--variantfile", help = "variant files to add", default = "all")
     parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-sq", "--sequencing", help = "sequencing type") #NEWLINE
     args = parser.parse_args()
 
     start = time.time()
@@ -478,7 +492,7 @@ def main():
         paths_split = np.array_split(paths, cpu)
         arguments = []
         for paths_split_ins in paths_split:
-            arguments.append((args.chainName, args.multichainLoc, args.datadir, paths_split_ins, person, args.metafile)) #NEW_LINE#
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, paths_split_ins, person, args.metafile, args.sequencing)) #NEW_LINE#
         pool = multiprocessing.Pool(cpu)
         pool.map(publishVariants, arguments)
         pool.close()
@@ -497,7 +511,7 @@ def main():
     
     except Exception as e:
         print(e)
-        sys.stderr.write("\nERROR: Failed stream publishing analysis. Please try again.\n")
+        sys.stderr.write("\nERROR: Failed stream publishing variants. Please try again.\n")
         quit()
         
 

@@ -302,7 +302,7 @@ def main():
     
     except Exception as e:
         print(e)
-        sys.stderr.write("\nERROR: Failed stream publishing variant. Please try again.\n")
+        sys.stderr.write("\nERROR: Failed stream publishing analysis. Please try again.\n")
         quit()
         
 
