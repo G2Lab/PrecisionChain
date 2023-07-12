@@ -1,2 +1,3 @@
-code/.*
+code/.ipynb_checkpoints
+code/slurm*
 data/
