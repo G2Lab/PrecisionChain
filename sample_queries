@@ -1,0 +1,9 @@
+Sample queries
+
+python QueryCombination.py --query=clinical -cn=combchain -dr=/gpfs/commons/groups/gursoy_lab/aelhussein/multichain -ch=3 -ck=436659 -ir=0.1-0.2 -gn=ENSG00000223587.2
+
+python QueryCombination.py --query=maf -cn=combchain -dr=/gpfs/commons/groups/gursoy_lab/aelhussein/multichain -ch=3 -ir=0.01-0.02
+
+python QueryCombination.py --query=gene -cn=combchain -dr=/gpfs/commons/groups/gursoy_lab/aelhussein/multichain -ch=3 -gn=ENSG00000223587.2
+
+python QueryCombination.py --query=variant -cn=combchain -dr=/gpfs/commons/groups/gursoy_lab/aelhussein/multichain -ch=3 -ps=1071427,1082238,998696,989131
