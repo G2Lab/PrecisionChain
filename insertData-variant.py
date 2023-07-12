@@ -91,10 +91,8 @@ def samplePersons(metaFile, person, sequencing):
         Metadatafile
     '''
     #BEGIN_NEW#
-    path_ = "/".join(metaFile.split('/')[:-2]) 
-    samples = pd.read_csv(f'{path_}/samples/samples_used_{person}.csv', usecols = [0,1]) 
-    samples = samples[samples['sequence'] == sequencing]
-    samples = samples.loc[:person]
+    samples = pd.read_csv(metaFile, usecols = [0,1]) 
+    samples = samples[samples['sequence'] == sequencing].iloc[:person]
     samples = samples['id'].values
     #END_NEW#
     return samples

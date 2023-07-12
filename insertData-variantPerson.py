@@ -78,24 +78,22 @@ def loadFilePaths(dataPath, variantFiles):
 # In[5]:
 
 
-def metadataPerson(metaFile, variantFile, people):
+#BEGIN_NEW#
+def metadataPerson(metaFile, sequencing, people):
     '''
     load metadata associated with the samples in the variant file
     Input:
         metaFile - path where the metadata is held
-        variantFiles - files to be added (one per chromosome)
+        sequencing - the sequencing type
     '''
-    
-    #extract samples from vcf file
-    request = 'bcftools query -l {} | head -n {}'.format(variantFile, people) #NEW_LINE#
-    output = subprocess.check_output(request, shell = True)
-    samples = output.decode().split()
+
     #metadata
     meta = pd.read_csv(f'{metaFile}')
-    meta['id'] = meta['id'].astype(str)
-    #get dict in the same order as the vcf file
-    meta_seq = meta[meta['id'].isin(samples)]
+    meta_seq = meta[meta['sequence'] == sequencing].iloc[:people]
+    meta_seq['id'] = meta_seq['id'].astype(str)
+    samples = meta_seq['id'].values
     return meta_seq, samples
+#END_NEW#
 
 
 # In[25]:
@@ -241,7 +239,7 @@ def publishMappingPerson(chainName, multichainLoc, datadir, meta):
 
 
 def publishToDataStreams(fields):
-    chainName, multichainLoc, datadir, metaFile, paths, people = fields
+    chainName, multichainLoc, datadir, metaFile, paths, people, sequencing = fields #NEW_LINE#
     '''
     loop through all samples and add to multichain
     Input:
@@ -250,7 +248,7 @@ def publishToDataStreams(fields):
     '''
     for variantFile in paths:
         #load mapping dictionary and file paths
-        meta, samples = metadataPerson(metaFile, variantFile, people)
+        meta, samples = metadataPerson(metaFile, sequencing, people) #NEW_LINE#
         publishMappingPerson(chainName, multichainLoc, datadir, meta)
         for sample_id in samples:
             streamName, streamValues = extractPersonVariants(variantFile, sample_id)
@@ -278,6 +276,7 @@ def main():
     parser.add_argument("-mf", "--metafile", help = "path to sample metadata file")
     parser.add_argument("-vf", "--variantfile", help = "variant files to add", default = "all")
     parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-sq", "--sequencing", help = "sequencing type") #NEWLINE
     
     args = parser.parse_args()
 
@@ -296,7 +295,7 @@ def main():
         paths_split = np.array_split(paths, cpu)
         arguments = []
         for paths_split_ins in paths_split:
-            arguments.append((args.chainName, args.multichainLoc, args.datadir, args.metafile, paths_split_ins, people))
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, args.metafile, paths_split_ins, people, args.sequencing))
         pool = multiprocessing.Pool(cpu)
         pool.map(publishToDataStreams, arguments)
         pool.close()

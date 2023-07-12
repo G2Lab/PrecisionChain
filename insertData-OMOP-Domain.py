@@ -34,9 +34,11 @@ warnings.simplefilter("ignore")
 # In[3]:
 
 def loadPeople(path, num):
-    path_ = "/".join(path.split('/')[:-2])  #NEW_LINE#
-    people = pd.read_csv(f'{path_}/samples/samples_used_{num}.csv', usecols = [0])  #NEW_LINE#
-    people = people['id'].values  #NEW_LINE#
+    #BEGIN_NEW#
+    samples = pd.read_csv(path, usecols = [0,1]) 
+    samples = samples.iloc[:num]
+    people = samples['id'].values
+    #END_NEW
     return people
 
 
