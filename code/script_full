@@ -1,0 +1,109 @@
+#!/usr/bin/bash
+#SBATCH --job-name=test_chain
+#SBATCH --partition=pe2
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=aelhussein@nygenome.org
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=50G
+#SBATCH --time=150:00:00
+
+
+source ~/anaconda3/bin/activate ~/anaconda3/envs/blockchain_env/
+module load multichain
+module load bcftools
+module load plink
+conda activate blockchain_env
+
+################Process VCF files################
+DP=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public/data/preprocessing
+python preprocessVCF.py -dp=$DP
+
+
+################CONDUCT PCA ANALYSIS################
+# Set the path to the directory containing the VCF files and PCA variants
+export DP="/gpfs/commons/groups/gursoy_lab/aelhussein/public/data/preprocessing"
+export filter_file="/gpfs/commons/groups/gursoy_lab/aaelhussein/public/data/preprocessing/37_38_mapping/pca_variants_18.txt"
+
+# Filter files for PCA variants
+chromosomes=( $(seq 1 22) )
+parallel -j 16 '
+  awk -v chr="{}" '\''$1==chr {print $1 "\t" $2}'\' ' '"${filter_file}"' > temp_regions_{}.txt
+  bcftools view --regions-file temp_regions_{}.txt '"${DP}"'/original/chr{}.vcf.gz -Oz -o '"${DP}"'/pca_ref/chr{}.vcf.gz
+  rm temp_regions_{}.txt
+' ::: "${chromosomes[@]}"
+
+#Concatenate VCF files
+for i in $(seq 1 22); do echo chr${i}.vcf.gz >> files.txt ; done
+bcftools concat -f files.txt -Oz -o merged.vcf.gz
+
+#Convert to BED
+plink --vcf ${DP}/pca_bigsnpr/merged.vcf.gz --make-bed --out ${DP}/pca_bigsnpr/merged
+
+#Run bigsnpr PCA
+SV="/gpfs/commons/groups/gursoy_lab/aelhussein/public/data/preprocessing"
+RF="merged"
+SF="merged"
+preprocessPCA.R $SV $RF $SF
+
+################INSERT DATA INTO CHAIN################
+CN=test_chain
+DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
+PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
+
+#SAMPLE NUMBERS
+PPL=12000
+PPL_GS=2000
+PPL_ES=2000
+PPL_AF=4000
+PPL_BC=4000
+
+#BUILD CHAIN
+python buildChain.py -cn=$CN --datadir=$DR
+
+#RESTART CHAIN  --> This is used once chain exists. Then do not using buildChain.py
+#multichaind $CN --datadir=$DR -daemon
+
+#CLINICAL
+
+python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
+
+python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL
+
+python createStream-OMOP-Person.py -cn=$CN --datadir=$DR
+
+python insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL
+
+#GENETIC
+python createStream-variants.py -cn=$CN --datadir=$DR
+
+##WGS
+python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_GS 
+
+python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_GS
+
+##WES
+python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_ES
+
+python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_ES
+
+##AFFYMETRIX
+python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_AF
+
+python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_AF
+
+##BEADCHIP
+python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_BC
+
+python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_BC
+
+##Analysis
+python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -pc=$PT/code/processing -rf=$PT/code/processing/relatedness -np=$PPL_GS 
+
+##GTF
+python createStream-gtf.py -cn=$CN -dr=$DR
+
+python insertData-gtf.py -cn=$CN -dr=$DR -gp=$PT/data/gtf -vp=$PT/data/vcf/wgs -ap=$PT/data/annotations
+
+
+
