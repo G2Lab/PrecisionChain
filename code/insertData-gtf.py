@@ -8,7 +8,7 @@
 insertData-gtf.py
 Inserts data from gtf files (genetic data)
 Usage: $ python insertData.py -cn=<chain name> -dr=<Chain path> -gp=<GTF path> -ch=<Chromosomes>
-modified by AE 05/2022
+modified by AE 03/2023
 '''
 import sys
 import time
@@ -88,8 +88,7 @@ def loadFilePaths(genePath, geneFiles, variantPath):
 
 # In[40]:
 
-
-def publishToVariantStream(chainName, multichainLoc, datadir, streamName, streamKeys):
+def publishToVariantStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues):
     '''
     Publish the data to the variant stream (keys are the variant position and gene it is associated with).
     Note that the data entry is empty
@@ -102,14 +101,14 @@ def publishToVariantStream(chainName, multichainLoc, datadir, streamName, stream
             str('-datadir={}'.format(datadir)),
             'publish',
             str('gene_variant_chrom_{}'.format(streamName)), 
-            str('["{}", "{}", "{}"]'.format(streamKeys[0], streamKeys[1], streamKeys[2])),
-            '{'+'"json":{}'+'}']
+            '["{}"]'.format('", "'.join(streamKeys)),
+            streamValues
+            ]
     procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     procPublish.wait()
     return
 
 
-# In[41]:
 
 
 def publishToGeneStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues):
@@ -136,7 +135,6 @@ def publishToGeneStream(chainName, multichainLoc, datadir, streamName, streamKey
 # In[42]:
 
 
-###CONSIDER MAKING IT ALL POSITIONS IN 1 GENE AS ENTRY TO SAVE ON INSERTION SPACE
 def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile):
     '''
     Extract relevant data for the gene including position, feature, type etc
@@ -156,28 +154,48 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
     values = str(values).replace("\'", '"')
     streamValues = '{'+'"json":{}'.format(values) +'}'
     publishToGeneStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
-    
+
     ##extract variant info from VCF file related to that gene (i.e. all positions within start and end of gene)
     request = 'bcftools query -r {}:{}-{} -f \'%POS \' {}'.format(chrom, position[0], position[1], variantFile)
     output = subprocess.check_output(request, shell = True)  
     variants = output.decode('utf-8').split(' ')[:-1]
-    ##for every variant position create entry with gene 
+    variants = [int(v) for v in variants]
+    #BEGIN_NEW#
+    ##get annotations
+    clinvar =pd.read_csv(f'{annotation_path}/clinvar_annot.txt')
+    vep = pd.read_csv(f'{annotation_path}/vep_annot.txt')
+    columns = ['#Chrom', 'Pos', 'AnnoType', 'Consequence', 'ConsScore', 'ConsDetail', 'RawScore', 'PHRED']
+    cadd =pd.read_csv(f'{annotation_path}/cadd_{chrom}.csv', skiprows = 1, sep = '\t', usecols = columns)
+
     for variant in variants:
-        streamName = chrom
-        streamKeys = [variant, gene_id, gene_name]
-        publishToVariantStream(chainName, multichainLoc, datadir, streamName, streamKeys)
-    return
+        streamKeys = [str(variant), gene_id, gene_name]
+        streamValues = {}
+        if str(variant) in vep['position'][vep['chromosome'] == chrom].values:
+            streamKeys.append('vep')
+            vep_annot = list(vep[['#Uploaded_variation', 'Consequence']][(vep['position'] == str(variant)) & (vep['chromosome'] == 1)].values[0])
+            streamValues['vep'] = vep_annot
+        #clinvar
+        if variant in clinvar['PositionVCF'][clinvar['Chromosome'] == chrom].values:
+            streamKeys.append('clinvar')
+            clinvar_annot = list(clinvar[['ClinicalSignificance', 'ClinSigSimple', 'PhenotypeList']][(clinvar['PositionVCF'] == variant) & (clinvar['Chromosome'] == str(chrom))].values[0])
+            streamValues['clinvar'] = clinvar_annot
+        if int(variant) in cadd['Pos'].values:
+            streamKeys.append('cadd')
+            cadd_annot = list(cadd[cadd['Pos'] == variant].iloc[:,2:].values[0])
+            streamValues['cadd'] = cadd_annot
 
+        streamValues = json.dumps({'json': streamValues})
 
-# In[43]:
+        publishToVariantStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
+    #END_NEW#
 
-
-def publishGTF(chainName, multichainLoc, datadir, paths):
+def publishGTF(arguments):
     '''
     For all GTF files - insert data
     Input:
         paths - the path to GTF files
     '''
+    chainName, multichainLoc, datadir, paths = arguments
     for path in paths:
         geneFile, variantFile, chrom = path
         #read in gtf file using data
@@ -185,9 +203,6 @@ def publishGTF(chainName, multichainLoc, datadir, paths):
                       usecols=['seqname','gene_id','feature','start','end', 'gene_type', 'gene_name','strand'])
         df.apply(publishToStreams, axis =1, args= (chainName, multichainLoc, datadir, chrom, variantFile))
     return
-
-
-# In[ ]:
 
 
 def main():
@@ -198,6 +213,7 @@ def main():
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
     parser.add_argument("-gp", "--genepaths", help = "path to GTF files")
     parser.add_argument("-vp", "--variantpaths", help = "path to VCF files")
+    parser.add_argument("-ap", "--annotationpath", help = "path to annotations") #NEW_LINE
     parser.add_argument("-ch", "--chromosomes", help = "chromosomes to add", default = "all")
     args = parser.parse_args()
 
@@ -206,6 +222,9 @@ def main():
     cpu = multiprocessing.cpu_count()
     print('CPUs available: {}'.format(cpu))
     
+    global annotation_path
+    annotation_path = args.annotationpath
+    
     try:
         subscribeToStreams(args.chainName, args.multichainLoc, args.datadir)
         print('Subscribed to streams') 
@@ -213,25 +232,15 @@ def main():
         paths = loadFilePaths(args.genepaths, args.chromosomes, args.variantpaths)
         cpu = min(cpu, len(paths))
         paths_split = np.array_split(paths, cpu)
-        processes = []
-        for i in range(cpu):
-            paths_split_ins = paths_split[i]
-            p_ins = multiprocessing.Process(target=publishGTF, args = (args.chainName, args.multichainLoc,
-                                                                                     args.datadir, paths_split_ins))
-            processes.append(p_ins)
-            p_ins.start()
-            
-            
-        for process in processes:
-            process.join()
-            
-            # print('Inserted {}'.format(paths_split_ins))
-            # end = time.time()
-            # e = int(end - start)
-            # print('\n\n Time elapsed:\n\n')
-            # print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
-
+        arguments = []
+        for paths_split_ins in paths_split:
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, paths_split_ins))
+        pool = multiprocessing.Pool(cpu)
+        pool.map(publishGTF, arguments)
+        pool.close()
+        pool.join()
         
+
         end = time.time()
         e = int(end - start)
         print('\n\n Time elapsed:\n\n')
@@ -249,4 +258,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

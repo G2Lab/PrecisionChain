@@ -47,10 +47,11 @@ def makeStream(chainName, streamName, multichainLoc, datadir):
 
 def createStreams(chainName, multichainLoc, datadir):
     '''
-    Makes a stream for every chromosome includign sex chromosomes
+    Makes a stream for every chromosome including sex chromosomes
     '''
     #data stream by for mapping
     makeStream(chainName, "mappingData_variants", multichainLoc, datadir) #header, other things for the whole file
+    makeStream(chainName, "mappingData_metadata", multichainLoc, datadir) #NEW_LINE#
    
     #data stream  split by chromosome
     for i in range(1, 23):
@@ -60,6 +61,7 @@ def createStreams(chainName, multichainLoc, datadir):
     makeStream(chainName, "chrom_x", multichainLoc, datadir)  
     makeStream(chainName, "chrom_y", multichainLoc, datadir) 
     
+    #Person streams
     for i in range(1, 23):
         makeStream(chainName, "person_chrom_{}".format(i), multichainLoc, datadir) 
     
@@ -67,7 +69,11 @@ def createStreams(chainName, multichainLoc, datadir):
         makeStream(chainName, "MAF_chrom_{}".format(i), multichainLoc, datadir) 
     
     makeStream(chainName, "MAF_chrom_x", multichainLoc, datadir)  
-    makeStream(chainName, "MAF_chrom_y", multichainLoc, datadir) 
+    makeStream(chainName, "MAF_chrom_y", multichainLoc, datadir)
+
+    #GWAS stream
+    makeStream(chainName, "analysis", multichainLoc, datadir)  #NEW_LINE#
+
     return
 
 

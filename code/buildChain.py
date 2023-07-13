@@ -3,19 +3,15 @@
 
 # In[2]:
 
-
-# %load /gpfs/commons/groups/gursoy_lab/aelhussein/Code/SAMChain/SAMchain/buildChain.py
 """
 buildChain-mimic.py
 Initializes an empty blockchain for storing comma-separated text file data
 Usage: $ python buildChain-mimic.py <chainName> <data_path> <multichain_directory> 
-modified by AE 02/2022
+modified by AE 02/2023
 """
 
 import sys
 import time
-import math
-import binascii
 import argparse
 import subprocess
 from subprocess import Popen, PIPE

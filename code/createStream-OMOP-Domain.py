@@ -39,9 +39,8 @@ def parseTables(tables):
 
     #if user wants to input to all tables
     if tables == 'all':
-        tables = ['condition_occurrence', 'drug_exposure', 'device_exposure',
-              'measurement', 'observation', 'procedure_occurrence',
-                  'specimen', 'visit_occurrence']
+        tables = ['condition_occurrence', 'drug_exposure',
+              'measurement', 'observation', 'procedure_occurrence', 'visit_occurrence']
     
     #parse the tables that are part of user input
     else:
@@ -62,7 +61,7 @@ def loadConcepts(dataPath, table):
         table - the specific table being added
     '''
 
-    dataPath = '{}/{}.csv'.format(dataPath, table) 
+    dataPath = '{}{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
     unique_codes = list(df.iloc[:,2].unique())
     concept_type = df.columns[2]

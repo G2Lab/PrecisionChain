@@ -1,0 +1,105 @@
+#!/usr/bin/bash
+#SBATCH --job-name=query_4k
+#SBATCH --partition=pe2
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=aelhussein@nygenome.org
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=100G
+#SBATCH --time=150:00:00
+
+
+source ~/anaconda3/bin/activate ~/anaconda3/envs/blockchain_env/
+module load multichain
+module load bcftools
+conda activate blockchain_env
+
+CN=query_4k
+DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
+PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
+AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
+
+#SAMPLE NUMBERS
+PPL=4000
+PPL_GS=2000
+PPL_ES=1200
+PPL_AF=400
+PPL_BC=400
+
+check_connection() {
+    multichain-cli $CN --datadir=$DR getinfo 2>&1
+}
+
+# Function to reopen the connection
+reopen_connection() {
+    multichaind $CN --datadir=$DR -daemon
+}
+
+
+#BUILD CHAIN
+python buildChain.py -cn=$CN --datadir=$DR
+
+#RESTART CHAIN  --> This is used once chain exists. Then do not using buildChain.py
+#multichaind $CN --datadir=$DR -daemon
+
+run_python_scripts() {
+
+    #CLINICAL
+
+    python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
+
+    python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL -mf=$PT/data/samples/metadata.csv 
+
+    python createStream-OMOP-Person.py -cn=$CN --datadir=$DR
+
+    python insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL -mf=$PT/data/samples/metadata.csv 
+
+    #GENETIC
+    python createStream-variants.py -cn=$CN --datadir=$DR
+
+    ##WGS
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
+
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
+
+    ##WES
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+
+    ##AFFYMETRIX
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+
+    ##BEADCHIP
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+
+    ##Analysis
+    python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
+
+    ##GTF
+    python createStream-gtf.py -cn=$CN -dr=$DR
+
+    python insertData-gtf.py -cn=$CN -dr=$DR -gp=$PT/data/gtf -vp=$PT/data/vcf/wgs -ap=$PT/data/annotations
+
+}
+
+run_python_scripts &
+
+while true; do
+    sleep 1000
+    # Check the connection
+    connection_status=$(check_connection)
+    
+    # If the error message contains the connection closed indication
+    if [[ $connection_status == *"error: Could not connect to the server"* ]]; then
+        echo "Connection is closed. Reopening..."
+        
+        # Reopen the connection
+        reopen_connection
+    fi
+done
+
