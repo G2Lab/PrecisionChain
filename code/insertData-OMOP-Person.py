@@ -48,9 +48,9 @@ def parseTables(tables):
 
 # In[3]:
 
-def loadPeople(path, num):
+def loadPeople(metafile, num):
     #BEGIN_NEW#
-    samples = pd.read_csv(path, usecols = [0,1]) 
+    samples = pd.read_csv(metafile, usecols = [0,1]) 
     samples = samples.iloc[:num]
     people = samples['id'].values
     #END_NEW
@@ -268,6 +268,7 @@ def main():
     parser.add_argument("-pp", "--personPath", help = "path to patient demographics file")
     parser.add_argument("-tb", "--tables", help = "tables to add", default = "all")
     parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file") #NEWLINE
     args = parser.parse_args()
 
     start = time.time()
@@ -281,7 +282,7 @@ def main():
         subscribeToStreams(args.chainName, args.multichainLoc, args.datadir)
         print('Subscribed to streams')
 
-        people = loadPeople(args.dataPath, num)
+        people = loadPeople(args.metafile, num) #NEW_LINE#
         person_df = loadPatients(args.personPath, people)
         publishToMappingStreams(args.chainName, args.multichainLoc, args.datadir, person_df)
         print('Published to Mapping streams')

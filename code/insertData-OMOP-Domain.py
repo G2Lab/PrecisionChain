@@ -33,9 +33,9 @@ warnings.simplefilter("ignore")
 
 # In[3]:
 
-def loadPeople(path, num):
+def loadPeople(metafile, num):
     #BEGIN_NEW#
-    samples = pd.read_csv(path, usecols = [0,1]) 
+    samples = pd.read_csv(metafile, usecols = [0,1]) 
     samples = samples.iloc[:num]
     people = samples['id'].values
     #END_NEW
@@ -419,6 +419,7 @@ def main():
     parser.add_argument("-dp", "--dataPath", type = str, help = "path of data to add to chain")
     parser.add_argument("-tb", "--tables", help = "tables to add", default = "all")
     parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file") #NEWLINE
     args = parser.parse_args()
 
     start = time.time()
@@ -427,7 +428,7 @@ def main():
     cpu = min(num, cpu)
     print('CPUs available: {}'.format(cpu))
     tables = parseTables(args.tables)
-    person = loadPeople(args.dataPath, num)
+    person = loadPeople(args.metafile, num) #NEW_LINE#
 
     processes_sub = []
     processes_map = []
