@@ -88,7 +88,7 @@ def extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys):
         matches.extend(json.loads(items, parse_int= int))
     ids = []
     for match in matches:
-        ids.append(int(match['keys'][1]))
+        ids.append(int(match['keys'][1])) #CHANGE_LINE#
     return(list(set(ids)))
 
 
@@ -123,10 +123,14 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
     matches = []
     
     for personid in personids:
-        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, personid)
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics_ {}'.format(chainName, datadir, personid)
         items = subprocess.check_output(queryCommand.split())
         matches += json.loads(items, parse_int= int)
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    #BEGIN_NEW#
+    demo = [match_['data']['json'] for match_ in matches]
+    print(demo)
+    #END_NEW#
     return matches
 
 
@@ -152,6 +156,8 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
                                                                                                 stream[1], stream[2], bucket+1, person_id)
                     items = subprocess.check_output(queryCommand.split())
                     matches += json.loads(items, parse_int= int)
+                    if matches:
+                        print(matches)
                     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     return matches
 
@@ -167,6 +173,7 @@ def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys
         items = subprocess.check_output(queryCommand.split())
         matches.extend(json.loads(items, parse_int= int))
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    print(matches)
     return matches
 
 
@@ -180,6 +187,7 @@ def queryPersonStreamSpecific(chainName, multichainLoc, datadir, person_ids, sea
             items = subprocess.check_output(queryCommand.split())
             matches.extend(json.loads(items, parse_int= int))
             publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+    print(matches)  
     return matches
 
 
@@ -261,6 +269,7 @@ def main():
 
     start = time.time()
     try:
+        print("--QUERYING--")
         subscribeToStream(args.chainName, args.multichainLoc, args.datadir)
         if args.view == action_choices[0]:
             domainQuery(args.chainName, args.multichainLoc, args.datadir, args.cohortKeys, args.searchKeys)
@@ -270,6 +279,8 @@ def main():
         end = time.time()
         
         e = int(end - start)
+        print('\n\n Time elapsed:\n\n')
+        print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
 
     except:
         sys.stderr.write("\nERROR: Failed querying. Please try again.\n")

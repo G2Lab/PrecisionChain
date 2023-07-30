@@ -1,4 +1,4 @@
-git#! /bin/bash
+#! /bin/bash
 module load multichain
 module load bcftools
 

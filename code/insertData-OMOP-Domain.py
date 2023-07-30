@@ -34,6 +34,14 @@ import persons
 
 # In[3]:
 
+def loadPeople(metafile, num):
+    #BEGIN_NEW#
+    samples = pd.read_csv(metafile, usecols = [0,1]) 
+    samples = samples.iloc[:num]
+    people = samples['id'].values
+    #END_NEW
+    return people
+
 
 def parseTables(tables):
     '''
@@ -41,7 +49,7 @@ def parseTables(tables):
     '''
     #parse the tables that are part of user input (ADD IN MEASUREMENT LATER REMOVED TO SPEED UP INSERTION)
     if tables == 'all':
-        tables = ['condition_occurrence', 'drug_exposure', 'device_exposure', 'observation', 'procedure_occurrence', 'specimen', 'visit_occurrence', 'measurement']
+        tables = ['condition_occurrence', 'drug_exposure',  'observation', 'procedure_occurrence', 'visit_occurrence']
     else:
         tables = str.split(tables.replace(" ",""), ',')
     return tables
@@ -50,7 +58,7 @@ def parseTables(tables):
 # In[4]:
 
 
-def loadConcepts(dataPath, table):
+def loadConcepts(dataPath, table, person):
     '''
     Load the data and extract the unique OMOP codes used in the table
     This is necessary to create streams relevant to the dataset
@@ -59,11 +67,10 @@ def loadConcepts(dataPath, table):
         dataPath - path for the data that is being added
         table - the specific table being added
     '''
-    dataPath = '{}/{}.csv'.format(dataPath, table) 
+    dataPath = '{}{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
+    df = df[df['person_id'].isin(person)]
     df['person_id'] = df['person_id'].astype(str)
-    # Loads only the people/NTASKS number of people
-    df = df[df.person_id.isin(persons.getChunk())]
     unique_codes = list(df.iloc[:,2].unique())
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]
@@ -112,7 +119,7 @@ def loadSuperConcepts(hierarchyPath, dataPath, table):
 # In[6]:
 
 
-def conceptStreamMapping(hierarchyPath, dataPath, table):
+def conceptStreamMapping(hierarchyPath, dataPath, table, person):
     '''
     Create a dictionary which indicates which stream each concept in the data could go
     Note there may be multiple streams that a concept is eligible to go to 
@@ -122,7 +129,7 @@ def conceptStreamMapping(hierarchyPath, dataPath, table):
         table - the specific table being added
     '''
     stream_mapping = {}
-    unique_concepts, _, _ = loadConcepts(dataPath, table)
+    unique_concepts, _, _ = loadConcepts(dataPath, table, person)
     df_stream_ancestor = loadSuperConcepts(hierarchyPath, dataPath, table)
     
     #for every concept in the dataset assign the potential super concepts that it could go to
@@ -135,7 +142,7 @@ def conceptStreamMapping(hierarchyPath, dataPath, table):
 # In[7]:
 
 
-def assignConceptStream(hierarchyPath, dataPath, table):
+def assignConceptStream(hierarchyPath, dataPath, table, person):
     '''
     Assign a specific stream for each concept, taking a random stream to help with stream size balancing
     Inputs:
@@ -143,8 +150,8 @@ def assignConceptStream(hierarchyPath, dataPath, table):
         dataPath - path for the data that is being added
         table - the specific table being added
     '''
-    _, _, data_df = loadConcepts(dataPath, table)
-    stream_mapping = conceptStreamMapping(hierarchyPath, dataPath, table)
+    _, _, data_df = loadConcepts(dataPath, table, person)
+    stream_mapping = conceptStreamMapping(hierarchyPath, dataPath, table, person)
     
     ##assign concept stream randomly from those that concept could go to; if no super concepts attached to concept then place in stream '0'
     concept_stream = []
@@ -160,7 +167,7 @@ def assignConceptStream(hierarchyPath, dataPath, table):
 # In[8]:
 
 
-def numStreamBuckets(hierarchyPath, dataPath, table):
+def numStreamBuckets(hierarchyPath, dataPath, table, person):
     '''
     Determine the number of buckets that a super concept needs, more than 1 stream will be needed for a concept if 1.2gb+ data is in a stream 
     Inputs:
@@ -169,7 +176,7 @@ def numStreamBuckets(hierarchyPath, dataPath, table):
         table - the specific table being added
     '''
     ##get assignments per stream
-    stream_assignments = assignConceptStream(hierarchyPath, dataPath, table)
+    stream_assignments = assignConceptStream(hierarchyPath, dataPath, table, person)
     ##get the size of each stream (based on size of a single entry being 900kb)
     stream_size = {i:stream_assignments.count(i) for i in list(set(stream_assignments))}
     stream_max_count = round(1.2e+9 / 900)
@@ -218,16 +225,19 @@ def processDateKey(keys_df):
 
 
 #load the data and organise the data into the stream_concept, keys and values
-def loadData(dataPath, table, keys):
+def loadData(dataPath, table, keys, num):
     '''
     For a given table, load the data and extract the concepts, keys, values
     Inputs:
         dataPath - path for the data that is being added
         table - the specific table being added
     '''
+    ## extract people
+    people = loadPeople(dataPath, num)
     #load data and extract relevant data
-    dataPath = '{}/{}.csv'.format(dataPath, table) 
+    dataPath = '{}{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
+    df = df[df['person_id'].isin(people)]
     df['person_id'] = df['person_id'].astype(str)
     # Loads only the people/NTASKS number of people
     df = df[df.person_id.isin(persons.getChunk())]
@@ -240,6 +250,7 @@ def loadData(dataPath, table, keys):
     #get values
     values_df = df
     return concept_type, keys_df, values_df
+
 
 
 # In[12]:
@@ -261,12 +272,12 @@ def subscribeToStream(chainName, streamName, multichainLoc, datadir):
 #Making the streams that will be used to store the file
 #making the stream bins
 #hash for location
-def subscribeToStreams(chainName, multichainLoc, datadir, hierarchyPath, dataPath, table):
-    _, concept_type, _ = loadConcepts(dataPath, table)
+def subscribeToStreams(chainName, multichainLoc, datadir, hierarchyPath, dataPath, table, person):
+    _, concept_type, _ = loadConcepts(dataPath, table, person)
     #data stream by for mapping
     subscribeToStream(chainName, "mappingData_clinical", multichainLoc, datadir) #header, other things for the whole file
     #subscribe to concept streams
-    stream_buckets = numStreamBuckets(hierarchyPath, dataPath, table)
+    stream_buckets = numStreamBuckets(hierarchyPath, dataPath, table, person)
     for concept in stream_buckets.keys():
         for num_buckets in range(stream_buckets[concept]):
             subscribeToStream(chainName, "{}_id_{}_bucket_{}".format(concept_type, concept, num_buckets+1), multichainLoc, datadir)
@@ -276,7 +287,7 @@ def subscribeToStreams(chainName, multichainLoc, datadir, hierarchyPath, dataPat
 # In[14]:
 
 
-def processTable(chainName, multichainLoc, datadir, hierarchyPath, dataPath, table):
+def processTable(chainName, multichainLoc, datadir, hierarchyPath, dataPath, table, num, person):
     '''
     Process the data table to get ready for insertion - includes extracting the streams and stream buckets, keys, and values
     Inputs:
@@ -285,19 +296,22 @@ def processTable(chainName, multichainLoc, datadir, hierarchyPath, dataPath, tab
         table - the specific table being added
     '''
     #get # of buckets for each stream
-    stream_buckets = numStreamBuckets(hierarchyPath, dataPath, table)
+    stream_buckets = numStreamBuckets(hierarchyPath, dataPath, table, person)
     #Get keys and values to publish
     keys = processKeys(dataPath, table)
-    concept_type, keys_df, values_df = loadData(dataPath, table, keys)
+    concept_type, keys_df, values_df = loadData(dataPath, table, keys, num)
     #Assign each concept to a super concept stream
-    concept_stream = assignConceptStream(hierarchyPath, dataPath, table)
+    concept_stream = assignConceptStream(hierarchyPath, dataPath, table, person)
     values_df['concept_stream'] = concept_stream
     #Assign a bucket to each entry
     df = pd.DataFrame()
     for stream_concept in stream_buckets.keys():
-        stream_df = values_df[values_df['concept_stream'] == stream_concept].sort_values(by = values_df.columns[2])
-        stream_df['bucket'] = pd.qcut(stream_df.iloc[:,2], stream_buckets[stream_concept], labels = [x for x in range(stream_buckets[stream_concept])])
-        df = df.append(stream_df)
+        try:
+            stream_df = values_df[values_df['concept_stream'] == stream_concept].sort_values(by = values_df.columns[2])
+            stream_df['bucket'] = pd.qcut(stream_df.iloc[:,2], stream_buckets[stream_concept], labels = [x for x in range(stream_buckets[stream_concept])])
+            df = df.append(stream_df)
+        except:
+            pass
     return concept_type, df, keys_df   
 
 
@@ -401,7 +415,6 @@ def publishToDataStreams(chainName, multichainLoc, datadir, data_ins):
     df_split_ins.apply(publishToDataStream, args = (chainName, multichainLoc, datadir,concept_type, keys_df), axis = 1)
     return
 
-
 # In[ ]:
 
 def main():
@@ -412,22 +425,25 @@ def main():
     parser.add_argument("-hp", "--hierarchyPath", help = "path to vocabulary file")
     parser.add_argument("-dp", "--dataPath", type = str, help = "path of data to add to chain")
     parser.add_argument("-tb", "--tables", help = "tables to add", default = "all")
+    parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file") #NEWLINE
     args = parser.parse_args()
 
     start = time.time()
     # cpu = multiprocessing.cpu_count()
     cpu = 16
     print('CPUs available: {}'.format(cpu))
-    
     tables = parseTables(args.tables)
-    
+    person = loadPeople(args.metafile, num) #NEW_LINE#
+
     processes_sub = []
     processes_map = []
     processes_ins = []
     try:
         for table in tables:
             p_sub = multiprocessing.Process(target=subscribeToStreams, args = (args.chainName, 
-                                                                               args.multichainLoc, args.datadir, args.hierarchyPath, args.dataPath, table))
+                                                                               args.multichainLoc, args.datadir, args.hierarchyPath,
+                                                                               args.dataPath, table, person))
             processes_sub.append((p_sub, table))
             p_sub.start()
             
@@ -437,7 +453,7 @@ def main():
         
         for table in tables:
             #process the data to be inserted into the relevant pieces of information
-            concept_type, df, keys_df = processTable(args.chainName, args.multichainLoc, args.datadir, args.hierarchyPath, args.dataPath, table)
+            concept_type, df, keys_df = processTable(args.chainName, args.multichainLoc, args.datadir, args.hierarchyPath, args.dataPath, table, num, person)
             #record the streams used
             stream_dictionary, stream_concept_dictionary = assignedStreamDictionary(df)
             #publish the mapping stream with the streams and buckets created

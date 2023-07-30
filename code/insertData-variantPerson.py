@@ -1,14 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 '''
 insertData-variantPerson.py
 Inserts data from VCF files (variant data)
-Usage: $ python insertData.py -cn=<chain name> -dr=<Chain path> -vf=<VCF path> -mf=<Person_id:VCF mapping file path>
-modified by AE 05/2022
+Usage: $ python insertData.py -cn=<chain name> -dr=<Chain path> -vf=<VCF path>
+modified by AE 03/2023
 '''
 
 import sys
@@ -73,7 +67,7 @@ def loadFilePaths(dataPath, variantFiles):
     if variantFiles == 'all':
         files = [x for x in range(1,23)]
     else:
-        files = str.split(files.replace(" ",""), ',')
+        files = str.split(variantFiles.replace(" ",""), ',')
     paths = []    
     for file in files:
         filePath= f'{dataPath}/chr_{file}.vcf.gz'
@@ -85,24 +79,22 @@ def loadFilePaths(dataPath, variantFiles):
 # In[5]:
 
 
-def mappingSamplePerson(mappingFile, variantFile):
+#BEGIN_NEW#
+def metadataPerson(metaFile, sequencing, people):
     '''
-    Mapping of person_ids to sample_ids (necessary as using dummy data so the ids are not aligned)
+    load metadata associated with the samples in the variant file
     Input:
-        mappingFile - path where the person:vcf ID mapping is held
-        variantFiles - files to be added (one per chromosome)
+        metaFile - path where the metadata is held
+        sequencing - the sequencing type
     '''
-    #mapping of person_ids to sample_ids, needed as using fake sample genes
-    with open('{}'.format(mappingFile)) as f:
-        mapping = f.read()    
-    sample_person = json.loads(mapping)
-    #extract samples from vcf file
-    request = 'bcftools query -l {}| head -n 100'.format(variantFile)
-    output = subprocess.check_output(request, shell = True)
-    samples = output.decode().split()
-    #get dict in the same order as the vcf file
-    sample_mapping = {x:sample_person[x] for x in samples}
-    return sample_mapping
+
+    #metadata
+    meta = pd.read_csv(f'{metaFile}')
+    meta_seq = meta[meta['sequence'] == sequencing].iloc[:people]
+    meta_seq['id'] = meta_seq['id'].astype(str)
+    samples = meta_seq['id'].values
+    return meta_seq, samples
+#END_NEW#
 
 
 # In[25]:
@@ -114,12 +106,12 @@ def extractPersonVariants(file, sample_id):
     Input:
         sample_id: id of the sample being added
     '''
-    ##BCFtools request (CHANGE FROM JUST TAKING THE HEAD)
-    filter_stmt = '''awk '{if($10 != "0|0") { print } }' '''
-    request = f'''bcftools view -s {sample_id}  -H  {file}| {filter_stmt} '''
+    ##BCFtools request
+    filter_stmt = '''awk '{if($10 != "0|0" && $10 != "0/0") { print } }' '''
+    request = f'''bcftools view -s {sample_id}  -H  {file} | head -10000 | {filter_stmt} '''
     output = subprocess.check_output(request, shell = True)
     ##extract the data from the output
-    df = pd.read_csv(BytesIO(output), sep='\t', usecols = [0,1,3,4,9], names= ['chrom', 'pos', 'ref', 'alt', 'gt'], index_col = 'pos')
+    df = pd.read_csv(BytesIO(output), sep='\t', usecols = [0,1,3,4,9], skiprows = 1, names= ['chrom', 'pos', 'ref', 'alt', 'gt'], index_col = 'pos')
     ##clean the ./. genotype
     df['gt'] = df['gt'].str[:3]
     df['gt'] =  df['gt'].str.replace('.','0')
@@ -140,7 +132,7 @@ def extractPersonVariants(file, sample_id):
         return chrom, values
     except:
         chrom = file.split('/')[-1].split('.')[0]
-        chrom, False
+        return chrom , False
 
 
 # In[26]:
@@ -188,7 +180,7 @@ def publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKey
 # In[28]:
 
 
-def publishMappingPerson(chainName, multichainLoc, datadir, samples):
+def publishMappingPerson(chainName, multichainLoc, datadir, meta):
     '''
     Publish the samples that were added during this insertion
     Input:
@@ -198,6 +190,7 @@ def publishMappingPerson(chainName, multichainLoc, datadir, samples):
     if int(os.environ.get('SLURM_ARRAY_TASK_ID', 0)) > 0:
         print("Skipping publishToMappingStream in worker nodes")
         return
+    samples = list(meta['id'].values)
     streamName = 'mappingData_variants'
     streamKeys = 'samples'
     streamValues = '{'+'"json":{}'.format(json.dumps(samples)) + '}'
@@ -208,8 +201,42 @@ def publishMappingPerson(chainName, multichainLoc, datadir, samples):
         str('{}'.format(streamName)), 
         str('{}'.format(streamKeys)),
         str('{}'.format(streamValues))]
+    
+    
     procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     procPublish.wait()
+    
+    ## person mapping
+    for i, row in meta.iterrows():
+        streamName = 'mappingData_variants'
+        streamKeys = f"{row['id']}, {row['company']}, {row['seq_machine']}, {row['seq_protocol']}, {str(row['coverage'])}, {row['alignment_protocol']}, {row['variant_calling']}"
+        streamValues = '{'+'"json":{}'+ '}'
+        publishCommand = [multichainLoc+'multichain-cli', 
+            str('{}'.format(chainName)), 
+            str('-datadir={}'.format(datadir)),
+            'publish',
+            str('{}'.format(streamName)), 
+            str('{}'.format(streamKeys)),
+            str('{}'.format(streamValues))]
+        procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        procPublish.wait()
+
+    ## by sequence
+    for seq in meta['sequence'].unique():
+        s = list(meta['id'][meta['sequence'] == seq])
+        streamName = 'mappingData_variants'
+        streamKeys = f'{seq}'
+        streamValues = '{'+'"json":{}'.format(json.dumps(s)) + '}'
+        publishCommand = [multichainLoc+'multichain-cli', 
+            str('{}'.format(chainName)), 
+            str('-datadir={}'.format(datadir)),
+            'publish',
+            str('{}'.format(streamName)), 
+            str('{}'.format(streamKeys)),
+            str('{}'.format(streamValues))]
+
+        procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        procPublish.wait()
     return
 
 
@@ -217,7 +244,7 @@ def publishMappingPerson(chainName, multichainLoc, datadir, samples):
 
 
 def publishToDataStreams(fields):
-    chainName, multichainLoc, datadir, mappingFile, paths = fields
+    chainName, multichainLoc, datadir, metaFile, paths, people, sequencing = fields #NEW_LINE#
     '''
     loop through all samples and add to multichain
     Input:
@@ -226,22 +253,18 @@ def publishToDataStreams(fields):
     '''
     for variantFile in paths:
         #load mapping dictionary and file paths
-        sample_person = mappingSamplePerson(mappingFile, variantFile)
-        publishMappingPerson(chainName, multichainLoc, datadir, list(sample_person.values()))
-        for sample_id in sample_person:
+        meta, samples = metadataPerson(metaFile, sequencing, people) #NEW_LINE#
+        publishMappingPerson(chainName, multichainLoc, datadir, meta)
+        for sample_id in samples:
             streamName, streamValues = extractPersonVariants(variantFile, sample_id)
             ## only submit if have non ./. alleles
             if isinstance(streamValues, dict):
                 ##chunk the dictionary as too large for one entry
                 split_variants = chunkDictionary(streamValues, SIZE=200)
                 for v in split_variants.values():
-                    streamKeys = sample_person[sample_id]
-                    # Person specific data is inserted from distributed nodes
-                    if streamKeys in persons.getChunk():
-                        streamValues ='{'+'"json":{}'.format(json.dumps(v)) +'}'#create JSON data object
-                        publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
-                    else:
-                        pass
+                    streamKeys = sample_id
+                    streamValues ='{'+'"json":{}'.format(json.dumps(v)) +'}'#create JSON data object
+                    publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
             else:
                 pass
                     
@@ -249,15 +272,17 @@ def publishToDataStreams(fields):
 
     return
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-dp", "--dataPath", type = str, help = "path of data to add to chain")
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
-    parser.add_argument("-mf", "--mappingfile", help = "path to sample mapping file")
+    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file")
     parser.add_argument("-vf", "--variantfile", help = "variant files to add", default = "all")
+    parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-sq", "--sequencing", help = "sequencing type") #NEWLINE
+    
     args = parser.parse_args()
 
     start = time.time()
@@ -275,7 +300,7 @@ def main():
         paths_split = np.array_split(paths, cpu)
         arguments = []
         for paths_split_ins in paths_split:
-            arguments.append((args.chainName, args.multichainLoc, args.datadir, args.mappingfile, paths_split_ins))
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, args.metafile, paths_split_ins, people, args.sequencing))
         pool = multiprocessing.Pool(cpu)
         pool.map(publishToDataStreams, arguments)
         pool.close()
@@ -293,8 +318,11 @@ def main():
     
     except Exception as e:
         print(e)
-        sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
+        sys.stderr.write("\nERROR: Failed stream publishing - variantPerson. Please try again.\n")
         quit()
+
+
+
 
 if __name__ == "__main__":
     main()

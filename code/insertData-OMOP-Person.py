@@ -8,7 +8,7 @@
 insertData-mimic-Person.py
 Inserts data for the person view of the clinical data in the blockchain
 Usage: $ python insertData-mimic-Person.py -cn=<chain name> -dr=<Chain path> -dp=<Data path> -pp=<Person data path>
-modified by AE 02/2022
+modified by AE 02/2023
 '''
 
 import sys
@@ -27,6 +27,7 @@ import pandas as pd
 import numpy as np
 import json
 import warnings
+from functools import partial
 warnings.simplefilter(action='ignore')
 import persons
 
@@ -40,7 +41,7 @@ def parseTables(tables):
     '''
     #parse the tables that are part of user input (ADD IN MEASUREMENT LATER REMOVED TO SPEED UP INSERTION)
     if tables == 'all':
-        tables = ['condition_occurrence', 'drug_exposure', 'device_exposure', 'observation', 'procedure_occurrence', 'specimen', 'visit_occurrence']
+        tables = ['condition_occurrence', 'drug_exposure', 'observation', 'procedure_occurrence', 'visit_occurrence']
     else:
         tables = str.split(tables.replace(" ",""), ',')
     return tables
@@ -48,13 +49,24 @@ def parseTables(tables):
 
 # In[3]:
 
+def loadPeople(metafile, num):
+    #BEGIN_NEW#
+    samples = pd.read_csv(metafile, usecols = [0,1]) 
+    samples = samples.iloc[:num]
+    people = samples['id'].values
+    #END_NEW
+    return people
 
-def loadPatients(path):
+def loadPatients(path, people):
     '''
     load the patients being inserted and split into 20 groups based on person_id
     '''
+
+    ##load table
     df = pd.read_csv(path)
-    df['stream'] = pd.qcut(df['person_id'], q = 20, labels =np.arange(1,21,1))
+    df = df.drop_duplicates('person_id') #NEW_LINE#
+    df['stream'] = pd.qcut(df['person_id'], q = 20, labels =np.arange(1,21,1), duplicates = 'drop')
+    df = df[df['person_id'].isin(people)]
     df['person_id'] = df['person_id'].astype(str)
     # Loads only the people/NTASKS number of people
     df = df[df.person_id.isin(persons.getChunk())]
@@ -62,6 +74,7 @@ def loadPatients(path):
 
 
 # In[4]:
+
 
 def processDateKey(keys_df):
     '''
@@ -79,7 +92,7 @@ def processDateKey(keys_df):
 # In[5]:
 
 
-def loadData(path, table):
+def loadData(path, table, people):
     '''
     For a given table, load the data and extract the concepts, keys, values
     Inputs:
@@ -87,6 +100,8 @@ def loadData(path, table):
         table - the specific table being added
     '''
     df = pd.read_csv(path + table +'.csv')
+    df = df[df['person_id'].isin(people)]
+
     df['person_id'] = df['person_id'].astype(str)
     # Loads only the people/NTASKS number of people
     df = df[df.person_id.isin(persons.getChunk())]
@@ -179,12 +194,12 @@ def publishToMappingStreams(chainName, multichainLoc, datadir, person_df):
             streamName = "person_demographics"
             row = person_df[person_df['person_id']==person_id]
             if row['race_concept_id'].iloc[0] == 0:
-                race = row['ethnicity_source_value'].iloc[0]
+                race = row['ethnicity_concept_id'].iloc[0]
             else:
-                race = row['race_source_value'].iloc[0]
-            streamKeys = row['person_id'].iloc[0], row['gender_source_value'].iloc[0], race
+                race = row['race_concept_id'].iloc[0]
+            streamKeys = row['person_id'].iloc[0], row['gender_concept_id'].iloc[0], race
 
-            streamValues ='{"json":'+row.to_json(orient = 'records').strip('[').strip(']')+'}'
+            streamValues ='{"json":'+row.iloc[0].to_json()+'}' #NEW_LINE#
             publishCommand = [multichainLoc+'multichain-cli', 
                 str('{}'.format(chainName)), 
                 str('-datadir={}'.format(datadir)),
@@ -193,10 +208,8 @@ def publishToMappingStreams(chainName, multichainLoc, datadir, person_df):
                 str('["{}","{}","{}"]'.format(streamKeys[0],streamKeys[1],streamKeys[2])),
                 str('{}'.format(streamValues))
                     ]
-            print(" ".join(publishCommand))
-            procPublish = subprocess.run(publishCommand, capture_output=True, text=True)
-            print(procPublish.stdout)
-            print(procPublish.stderr)
+            procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            procPublish.wait()
     return
 
 
@@ -242,6 +255,12 @@ def publishToDataStreams(chainName, multichainLoc, datadir, data_ins, person_df)
     return
 
 
+def process_data(args, data_df_split, keys_df_split, person_df, concept_type):
+    '''
+    starmap for pool processing
+    '''
+    data_ins = (concept_type, data_df_split, keys_df_split)
+    publishToDataStreams(args.chainName, args.multichainLoc, args.datadir, data_ins, person_df)
 
 # In[ ]:
 
@@ -253,64 +272,39 @@ def main():
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
     parser.add_argument("-pp", "--personPath", help = "path to patient demographics file")
     parser.add_argument("-tb", "--tables", help = "tables to add", default = "all")
+    parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file") #NEWLINE
     args = parser.parse_args()
 
     start = time.time()
-    
+    num = int(args.numberPeople)
     tables = parseTables(args.tables)
     processes = []
     # cpu = multiprocessing.cpu_count()
     cpu = 16
     print('CPUs available: {}'.format(cpu))
-    
+
     try:
         subscribeToStreams(args.chainName, args.multichainLoc, args.datadir)
-        print('Subscribed to streams') 
-        
-        person_df = loadPatients(args.personPath)
+        print('Subscribed to streams')
+
+        people = loadPeople(args.metafile, num) #NEW_LINE#
+        person_df = loadPatients(args.personPath, people)
         publishToMappingStreams(args.chainName, args.multichainLoc, args.datadir, person_df)
-        print('Published to Mapping streams') 
-        
-        for table in tables:
-            concept_type, keys_df, data_df = loadData(args.dataPath, table)
-            ##split the dataset based on number of CPUs
-            data_df_split = np.array_split(data_df, cpu)
-            keys_df_split = np.array_split(keys_df,cpu)
-            ##insert via multiprocessing
-            for i in range(cpu):
-                data_df_split_ins = data_df_split[i]
-                keys_df_split_ins = keys_df_split[i]
-                rows = data_df_split_ins.shape[0]
-                data_ins = (concept_type, data_df_split_ins, keys_df_split_ins)
-                p_ins = multiprocessing.Process(target=publishToDataStreams, args = (args.chainName, args.multichainLoc,
-                                                                                         args.datadir, data_ins, person_df))
-                processes.append(p_ins)
-                p_ins.start()
-            
-            
-            for process in processes:
-                process.join()
-            print('Inserted {}'.format(table))
-            end = time.time()
-            e = int(end - start)
-            print('\n\n Time elapsed:\n\n')
-            print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
+        print('Published to Mapping streams')
+        with multiprocessing.Pool(processes=cpu) as pool:
+            for table in tables:
+                concept_type, keys_df, data_df = loadData(args.dataPath, table, people)
+                data_df_split = np.array_split(data_df, cpu)
+                keys_df_split = np.array_split(keys_df, cpu)
+                pool.starmap(partial(process_data, args, person_df=person_df, concept_type=concept_type), 
+                             zip(data_df_split, keys_df_split))
 
-        
-        end = time.time()
-        e = int(end - start)
-        print('\n\n Time elapsed:\n\n')
-        print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
-
-        process = psutil.Process(os.getpid())
-        print('\n\n Total memory in bytes:\n\n')
-        print(process.memory_info().rss)
-    
+        print('All data published')
+        print('Elapsed time: {} seconds'.format(time.time() - start))
     except Exception as e:
-        print(e)
+        print(str(e))
         sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
-        quit()
-        
         
 
 if __name__ == "__main__":

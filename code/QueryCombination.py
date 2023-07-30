@@ -33,6 +33,7 @@ from datetime import datetime
 from pprint import pprint as pp
 import json
 import pdb
+import itertools
 from json.decoder import JSONDecodeError
 warnings.simplefilter(action='ignore')
 
@@ -124,7 +125,8 @@ def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
             gene_data = exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom)
             return gene_data
         else:
-            return None
+            print('No gene associated with variant position {}'.format(variant))
+
 
 # ## gene -> variant query
 
@@ -289,6 +291,7 @@ def queryMAFVariantGene(chainName, multichainLoc, datadir, chrom, inputRange):
             gene_df['person_ids'] = [person_ids for _ in range(len(gene_df))]
             results.append(gene_df)
             # Avoid printing for now
+            # print(gene_df)
         except:
             pass
     return results
@@ -380,9 +383,16 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
     matches = json.loads(items, parse_int= int)
     ##count the number of samples (not there will be multiple matches from the query as each time a batch of samples is added a new entry is created)
     samples = []
+    #BEGIN_NEW#
     for match in matches:
-        ##track mapping files for all unique samples added
-        samples.extend(match['data']['json'])
+            ##track mapping files for all unique samples added
+                try:
+                    samples.extend(match['data']['json'])
+                except:
+                    items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
+                    match = json.loads(items, parse_int= int)
+                    samples.extend(match['json'])
+    #END_NEW#
     samples = len(set(samples))
 
     ##if not a homozygous gt then carry out search and count number of samples that match
@@ -395,9 +405,16 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
         matches = json.loads(items, parse_int= int)
         ##count the number of samples (not there will be multiple matches from the query as each time a batch of samples is added a new entry is created)
         alleleMatch = []
+        #BEGIN_NEW#
         for match in matches:
             ##track mapping files for all unique samples added
-            alleleMatch .extend(match['data']['json'])
+                try:
+                    alleleMatch.extend(match['data']['json'])
+                except:
+                    items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
+                    match = json.loads(items, parse_int= int)
+                    alleleMatch.extend(match['json'])
+        #END_NEW#
         alleleMatch = len(set( alleleMatch ))
     ##if a homozygous gt then add up all the matches and take #full samples - result (this is because 0|0 is not stored on chain)
     else:
@@ -407,12 +424,19 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
         matches = json.loads(items, parse_int= int)
 
         alleleMatch = []
+        #BEGIN_NEW#
         for match in matches:
             ##track mapping files for all unique samples added
-            alleleMatch .extend(match['data']['json'])
+                try:
+                    alleleMatch.extend(match['data']['json'])
+                except:
+                    items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
+                    match = json.loads(items, parse_int= int)
+                    alleleMatch.extend(match['json'])
+        #END_NEW#
         alleleMatch = len(set( alleleMatch ))
         alleleMatch = samples - alleleMatch
-    return round(alleleMatch / samples,2)
+    return round(alleleMatch / samples,3)
 
 
 # In[554]:
@@ -438,7 +462,16 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
 
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
-        variants_person = matches[0]['data']['json']
+        #BEGIN_NEW#
+        variants_person = []
+        for match_ in matches:
+            try:
+                variants_person.append(match_['data']['json'])
+            except:
+                items = get_json_payload_from_txid(match_['data'].get('txid'), chainName, datadir)
+                match_ = json.loads(items, parse_int= int)
+                variants_person.append(match_['json'])
+        variants_person = dict(itertools.chain.from_iterable(d.items() for d in variants_person))
         variants_person_filtered = {k:v for k,v in variants_person.items() if k in variants}
         for variant in variants_person_filtered:
             try:
@@ -482,6 +515,7 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
     else:
         variants_df_filtered = variants_df
     # Avoid printing for now
+    #print(variants_df_filtered)
     return variants_df_filtered
 
 # ## Variant to clinical queries
@@ -519,6 +553,7 @@ def queryDemographics(chainName, multichainLoc, datadir, person_ids):
     persons_df.set_index('person_id', inplace = True)
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     persons_json = persons_df.to_json(orient = 'index')
+    print(persons_json)
     return persons_json
 
 
@@ -556,6 +591,8 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
                     data[key] = pd.DataFrame()
                     data[key] = pd.concat([data[key],d])
     
+    for key in data:
+        print(data[key])
         
     return data
 
@@ -582,7 +619,12 @@ def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, chrom, v
 # ## log queries
 
 # In[ ]:
-
+#BEGIN_NEW#
+def get_json_payload_from_txid(txid, chainName, datadir):
+    queryCommand = 'multichain-cli {} -datadir={} gettxoutdata {} 0'.format(chainName, datadir, txid)
+    items = subprocess.check_output(queryCommand.split())
+    return items
+#END_NEW#
 
 def publishToAuditstream(chainName, multichainLoc, datadir, queryCommand):
     #load wallet
@@ -668,8 +710,11 @@ def main():
 
         end = time.time()
         e = int(end - start)
+        print('\n\n Time elapsed:\n\n')
+        print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
     
     except Exception as e:
+        print(e)
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         

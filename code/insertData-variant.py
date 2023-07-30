@@ -7,8 +7,8 @@
 '''
 insertData-variant.py
 Inserts data from VCF files (variant data)
-Usage: $ python insertData.py -cn=<chain name> -dr=<Chain path> -vf=<VCF path> -mf=<Person_id:VCF mapping file path>
-modified by AE 05/2022
+Usage: $ python insertData.py -cn=<chain name> -dr=<Chain path> -vf=<VCF path>
+modified by AE 07/2023
 '''
 
 import sys
@@ -85,24 +85,17 @@ def loadFilePaths(dataPath, variantFiles):
 # In[5]:
 
 
-def mappingSamplePerson(mappingFile, variantFile):
+def samplePersons(metaFile, person, sequencing):
     '''
-    Mapping of person_ids to sample_ids (necessary as using dummy data so the ids are not aligned)
     Input:
-        mappingFile - path where the person:vcf ID mapping is held
-        variantFiles - files to be added (one per chromosome)
+        Metadatafile
     '''
-    #mapping of person_ids to sample_ids, needed as using fake sample genes
-    with open('{}'.format(mappingFile)) as f:
-        mapping = f.read()    
-    sample_person = json.loads(mapping)
-    #extract samples from vcf file
-    request = 'bcftools query -l {}| head -n 100'.format(variantFile)
-    output = subprocess.check_output(request, shell = True)
-    samples = output.decode().split()
-    #get dict in the same order as the vcf file
-    sample_mapping = {x:sample_person[x] for x in samples}
-    return sample_mapping
+    #BEGIN_NEW#
+    samples = pd.read_csv(metaFile, usecols = [0,1]) 
+    samples = samples[samples['sequence'] == sequencing].iloc[:person]
+    samples = samples['id'].values
+    #END_NEW#
+    return samples
 
 
 # In[6]:
@@ -127,7 +120,7 @@ def extractPositions(variantFile):
     positions = [output.decode('utf-8').split('\n')[0]]
     
     #get every 100th positions
-    request = "bcftools query -f \'%POS\n\' {} | awk \'NR % 100 == 0\'".format(variantFile)
+    request = "bcftools query -f \'%POS\n\' {} | head -20000 |  awk \'NR % 100 == 0\'".format(variantFile)
     output = subprocess.check_output(request, shell = True)
     positions.extend(output.decode('utf-8').split('\n'))
 
@@ -145,7 +138,7 @@ def extractPositions(variantFile):
     
     
     #get last position
-    request = 'bcftools query -f \'%POS\n\' {} | tail -n 1'.format(variantFile)
+    request = 'bcftools query -f \'%POS\n\' {} | head -20000 | tail -n 1'.format(variantFile)
     output = subprocess.check_output(request, shell = True)
     last = output.decode('utf-8').split('\n')[0]
     pos_regions[s-1][-1] = last
@@ -210,7 +203,7 @@ def extractRelevantGenotypes(row):
 # In[61]:
 
 
-def extractVariant(variantFile, positions, pos_region, colnames, chrom):
+def extractVariant(variantFile, positions, pos_region, sample_person, colnames, chrom):
     '''
     Within a position range in the VCF file, extract data on the genotypes and samples
     Input:
@@ -219,12 +212,26 @@ def extractVariant(variantFile, positions, pos_region, colnames, chrom):
         colnames - person_ids included (and ref, alt columns)
         
     '''
+    samples = list(sample_person)
     #get variant data
-    request = 'bcftools query -r {}:{}-{} -f \'%POS %REF %ALT [ %GT]\n\' {}'.format(chrom, pos_region[0], pos_region[1], variantFile)
-    output = subprocess.check_output(request, shell = True)  
-    df = pd.read_csv(BytesIO(output), delim_whitespace=True, usecols=[x for x in range(103)], names = colnames, index_col = 'pos')
+    #BEGIN_NEW#
+    samples_chunked = [samples[i:i + 500] for i in range(0, len(samples), 500)]
+    df = None
+    for sample_chunk in samples_chunked:
+        colnames= ['pos', 'ref', 'alt'] + sample_chunk
+        samples = ','.join(map(str, sample_chunk))
+        request = f'bcftools query -r {chrom}:{pos_region[0]}-{pos_region[1]} -f \'%POS %REF %ALT [ %GT]\n\' -s "{samples}" {variantFile}'
+        output = subprocess.check_output(request, shell = True) 
+        df_partial = pd.read_csv(BytesIO(output), delim_whitespace=True, names=colnames, index_col='pos')
+        
+        if df is None:  
+            df = df_partial
+        else:
+            df = pd.concat([df, df_partial.drop(['ref', 'alt'], axis=1)], axis=1)
+    #END_NEW#
     #keep track of positions added (for mapping)
-    positions.extend(df.index)
+    pos_ref_alt = [f'{pos}:{ref}:{alt}' for pos, ref, alt in zip(df.index, df['ref'],df['alt'])] #NEW_LINE#
+    positions.extend(pos_ref_alt) #NEW_LINE#
     #get dictionary of samples associated with each genotype
     alt_genotypes = pd.DataFrame(df.apply(extractRelevantGenotypes, axis = 1))
     #wrangle the dataset to be genotype:sample_ids
@@ -262,7 +269,7 @@ def publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKey
     
     ##if publishing MAF data
     else:
-        publishCommand = [multichainLoc+'multichain-cli',
+        publishCommand = [multichainLoc+'multichain-cli', 
             str('{}'.format(chainName)), 
             str('-datadir={}'.format(datadir)),
             'publish',
@@ -351,6 +358,7 @@ def extractPreviousMAF(chainName, multichainLoc, datadir, chrom):
         df = pd.DataFrame(output).loc[:,['keys', 'blocktime']]
         #create dataframe of positions and MAF information  
         df[['position', 'ref', 'alt', 'allele', 'count', 'total', 'freq']] = pd.DataFrame(df['keys'].tolist())
+        df['blocktime'] = df['blocktime'].fillna(method='bfill') #NEW_LINE#
         df = df.iloc[df.groupby(['position', 'allele'])['blocktime'].idxmax(),2:].set_index(['position', 'ref','alt','allele'])
         return df
     else:
@@ -395,36 +403,42 @@ def publishPositions(chainName, multichainLoc, datadir, positions, chrom):
         positions: list of positions added from vcf file
         chrom: chromosome positions come from
     '''
-    streamName = 'mappingData_variants'
-    streamKeys = 'chrom_{}'.format(chrom)
-    streamValues = '{'+'"json":{}'.format(positions) + '}'
-    publishCommand = [multichainLoc+'multichain-cli', 
-        str('{}'.format(chainName)), 
-        str('-datadir={}'.format(datadir)),
-        'publish',
-        str('{}'.format(streamName)), 
-        str('{}'.format(streamKeys)),
-        str('{}'.format(streamValues))]
-    procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procPublish.wait()
+    #BEGIN_NEW#
+    chunk_size = 2000 if len(positions) > 2000 else len(positions)
+    position_chunks = [positions[i:i + chunk_size] for i in range(0, len(positions), chunk_size)]
+    for position_chunk in position_chunks:
+        position_chunk = str(position_chunk) #NEW_LINE#
+        position_chunk = position_chunk.replace("'", '"') #NEW_LINE#
+        streamName = 'mappingData_variants'
+        streamKeys = 'chrom_{}'.format(chrom)
+        streamValues = '{'+'"json":{}'.format(position_chunk) + '}'
+        publishCommand = [multichainLoc+'multichain-cli', 
+            str('{}'.format(chainName)), 
+            str('-datadir={}'.format(datadir)),
+            'publish',
+            str('{}'.format(streamName)), 
+            str('{}'.format(streamKeys)),
+            str('{}'.format(streamValues))]
+        procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        procPublish.wait()
+    #END_NEW#
 
 
 # In[249]:
 
 
 def publishVariants(fields):
-    chainName, multichainLoc, datadir, mappingFile, variantFiles = fields
+    chainName, multichainLoc, datadir, variantFiles, person, metaFile, sequencing = fields #NEW_LINE#
     '''
     Publish the variant data
     Input:
-        mappingFile - path where the person:vcf ID mapping is held
         variantFiles - files to be added (one per chromosome)
     '''
     for variantFile in variantFiles:
         #extract samples
-        sample_person = mappingSamplePerson(mappingFile, variantFile)
+        sample_person = samplePersons(metaFile, person, sequencing) # NEW_LINE#
         colnames= ['pos', 'ref', 'alt']
-        colnames.extend(list(sample_person.values()))
+        colnames.extend(list(sample_person))
         sample_size = len(colnames) - 3
         #split into groups and extract relevant variants
         chrom, pos_regions = extractPositions(variantFile)
@@ -435,7 +449,7 @@ def publishVariants(fields):
         positions = []
         for pos_region in list(pos_regions.values())[:len(pos_regions.values())]:
             ##insert variant data
-            alt_genotypes, positions = extractVariant(variantFile, positions, pos_region, colnames, chrom)
+            alt_genotypes, positions = extractVariant(variantFile, positions, pos_region, sample_person, colnames, chrom)
             publishToDataStreams(chainName, multichainLoc, datadir, alt_genotypes, chrom, MAF, sample_size, prevMAF_df, publishVariant = True )
         ##publish MAF data
         publishMAF(chainName, multichainLoc, datadir, MAF, chrom)
@@ -453,8 +467,10 @@ def main():
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
-    parser.add_argument("-mf", "--mappingfile", help = "path to sample mapping file")
+    parser.add_argument("-mf", "--metafile", help = "path to sample metadata file") #NEWLINE
     parser.add_argument("-vf", "--variantfile", help = "variant files to add", default = "all")
+    parser.add_argument("-np", "--numberPeople", help = "number of people to add", default = "100")
+    parser.add_argument("-sq", "--sequencing", help = "sequencing type") #NEWLINE
     args = parser.parse_args()
 
     start = time.time()
@@ -468,11 +484,12 @@ def main():
         print('Subscribed to streams') 
         
         paths = loadFilePaths(args.dataPath, args.variantfile)
+        
         cpu = min(cpu, len(paths))
         paths_split = np.array_split(paths, cpu)
         arguments = []
         for paths_split_ins in paths_split:
-            arguments.append((args.chainName, args.multichainLoc, args.datadir, args.mappingfile, paths_split_ins))
+            arguments.append((args.chainName, args.multichainLoc, args.datadir, paths_split_ins, person, args.metafile, args.sequencing)) #NEW_LINE#
         pool = multiprocessing.Pool(cpu)
         pool.map(publishVariants, arguments)
         pool.close()
@@ -491,10 +508,9 @@ def main():
     
     except Exception as e:
         print(e)
-        sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
+        sys.stderr.write("\nERROR: Failed stream publishing variants. Please try again.\n")
         quit()
         
 
 if __name__ == "__main__":
     main()
-
