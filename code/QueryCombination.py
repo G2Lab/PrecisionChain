@@ -190,19 +190,32 @@ def MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRange
         numericRange - the numeric values of the user inputted range
     '''
     ##multichain command to extract positions from MAF stream using streamRange
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems MAF_chrom_{} {}'.format(chainName, datadir, chrom, streamRange)
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems MAF_chrom_{} {} false 99999'.format(chainName, datadir, chrom, streamRange)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
-    MAF_variants = matches[0]['data']['json']
+    #BEGIN_NEW#
     try:
-        MAF_variants = json.loads(MAF_variants.replace("(",'"(').replace(")",')"'))
+        MAF_variants = []
+        for match in matches:
+            MAF_variants.append(match['data']['json'])
     except:
-        MAF_variants = MAF_variants.replace("[", '(').replace("]",")").replace('A', '"A"').replace('C', '"C"').replace('G', '"G"').replace('T', '"T"').replace('0|0', '"0|0"').replace('1|0', '"1|0"'
+        MAF_variants = []
+        for match in matches:
+            txid = match['txid']
+            items = get_json_payload_from_txid(txid, chainName, datadir)
+            match_txid = json.loads(items, parse_int= int)
+            MAF_variants.append(match_txid['json'])
+    try:
+        MAF_variants = [json.loads(MAF_variant.replace("(",'"(').replace(")",')"')) for MAF_variant in MAF_variants]
+    except:
+        MAF_variants = [MAF_variant.replace("[", '(').replace("]",")").replace('A', '"A"').replace('C', '"C"').replace('G', '"G"').replace('T', '"T"').replace('0|0', '"0|0"').replace('1|0', '"1|0"'
                                     ).replace('1|1', '"1|1"').replace('2|0', '"2|0"').replace('2|2', '"2|2"').replace('2|1', '"2|1"').replace('3|0', '"3|0"').replace('3|1', '"3|1"').replace(
-                                        '3|2', '"3|2"').replace('3|3', '"3|3"')
-        MAF_variants = eval(MAF_variants)
+                                        '3|2', '"3|2"').replace('3|3', '"3|3"') for MAF_variant in MAF_variants]
+        MAF_variants = [eval(MAF_variant) for MAF_variant in MAF_variants]
     ##create DF from returned values and filter only for those within actual numeric range
-    MAF_df = pd.DataFrame.from_dict(MAF_variants, orient = 'index', columns = ['MAF'])
+    MAF_df = pd.DataFrame(MAF_variants).T.iloc[:,:-2:-1]
+    MAF_df.columns = ['MAF']
+    #END_NEW#
     MAF_df = MAF_df[(MAF_df['MAF'] >= numericRange[0]) & (MAF_df['MAF'] <= numericRange[1])]
     MAF_df.reset_index(inplace = True)
     ##function to parse the returned JSON object with variant information
@@ -220,9 +233,6 @@ def MAFquery(chainName, multichainLoc, datadir, chrom, streamRange, numericRange
         MAF_parsed_df = pd.DataFrame(np.vstack(MAF_parsed), columns = ['pos','ref','alt','gt','maf'])
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
         return MAF_parsed_df
-    
-    publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-    return
 
 
 # In[547]:
