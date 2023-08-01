@@ -475,8 +475,9 @@ def main():
 
     start = time.time()
     
-    # cpu = multiprocessing.cpu_count()
-    cpu = 16
+    cpu = multiprocessing.cpu_count()
+    person = int(args.numberPeople)
+    cpu = min(cpu, person)
     print('CPUs available: {}'.format(cpu))
     
     try:

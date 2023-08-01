@@ -61,49 +61,81 @@ PPL_BC=4000
 #BUILD CHAIN
 python buildChain.py -cn=$CN --datadir=$DR
 
+check_connection() {
+    multichain-cli $CN --datadir=$DR getinfo 2>&1
+}
+
+# Function to reopen the connection
+reopen_connection() {
+    multichaind $CN --datadir=$DR -daemon
+}
+
+
+#BUILD CHAIN
+python buildChain.py -cn=$CN --datadir=$DR
+
 #RESTART CHAIN  --> This is used once chain exists. Then do not using buildChain.py
 #multichaind $CN --datadir=$DR -daemon
 
-#CLINICAL
+run_python_scripts() {
 
-python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
+    #CLINICAL
 
-python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL
+    python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
 
-python createStream-OMOP-Person.py -cn=$CN --datadir=$DR
+    python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL -mf=$PT/data/samples/metadata.csv 
 
-python insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL
+    python createStream-OMOP-Person.py -cn=$CN --datadir=$DR
 
-#GENETIC
-python createStream-variants.py -cn=$CN --datadir=$DR
+    python insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL -mf=$PT/data/samples/metadata.csv 
 
-##WGS
-python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_GS 
+    #GENETIC
+    python createStream-variants.py -cn=$CN --datadir=$DR
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_GS
+    ##WGS
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
 
-##WES
-python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_ES
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_ES
+    ##WES
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
 
-##AFFYMETRIX
-python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_AF
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_AF
+    ##AFFYMETRIX
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
 
-##BEADCHIP
-python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_BC
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
 
-python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/mapping_vocab/metadata.csv -np=$PPL_BC
+    ##BEADCHIP
+    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
 
-##Analysis
-python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/mapping_vocab/metadata.csv -pc=$PT/code/processing -rf=$PT/code/processing/relatedness -np=$PPL_GS 
+    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
 
-##GTF
-python createStream-gtf.py -cn=$CN -dr=$DR
+    ##Analysis
+    python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
 
-python insertData-gtf.py -cn=$CN -dr=$DR -gp=$PT/data/gtf -vp=$PT/data/vcf/wgs -ap=$PT/data/annotations
+    ##GTF
+    python createStream-gtf.py -cn=$CN -dr=$DR
 
+    python insertData-gtf.py -cn=$CN -dr=$DR -gp=$PT/data/gtf -vp=$PT/data/vcf/wgs -ap=$PT/data/annotations
+
+}
+
+run_python_scripts &
+
+while true; do
+    sleep 1000
+    # Check the connection
+    connection_status=$(check_connection)
+    
+    # If the error message contains the connection closed indication
+    if [[ $connection_status == *"error: Could not connect to the server"* ]]; then
+        echo "Connection is closed. Reopening..."
+        
+        # Reopen the connection
+        reopen_connection
+    fi
+done
 
 
