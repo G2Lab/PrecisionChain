@@ -386,11 +386,14 @@ def publishMAF(chainName, multichainLoc, datadir, MAF, chrom):
             MAF_group = MAF_df[(MAF_df['freq'] > range[0]) &  (MAF_df['freq'] <= range[1])]
             streamName = chrom
             streamKeys = "{}-{}".format(range[0], range[1])
-            streamValues ='{'+'"json":"{}"'.format(MAF_group['freq'].to_json().replace('"','').replace("'","")) +'}'#create JSON data object
-            streamValues = streamValues.replace("'",'"')
-            publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues, publishVariant = False)
-    
+            #BEGIN_NEW#
+            for _, chunk in MAF_group.groupby(np.arange(len(MAF_group)) // 1000):
+                streamValues ='{'+'"json":"{}"'.format(chunk['freq'].to_json().replace('"','').replace("'","")) +'}'
+                streamValues = streamValues.replace("'",'"')
+                publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues, publishVariant = False)
+            #END_NEW#
     return
+
 
 
 # In[ ]:
