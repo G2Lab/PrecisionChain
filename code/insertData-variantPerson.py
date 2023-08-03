@@ -28,6 +28,11 @@ from itertools import islice
 warnings.simplefilter("ignore")
 import persons
 
+# Read environmental variables
+NTASKS = int(os.environ.get('NTASKS', 1))
+JOB_ID = int(os.environ.get('SLURM_ARRAY_TASK_ID', 0))
+
+
 
 # In[2]:
 
@@ -92,6 +97,9 @@ def metadataPerson(metaFile, sequencing, people):
     meta = pd.read_csv(f'{metaFile}')
     meta_seq = meta[meta['sequence'] == sequencing].iloc[:people]
     meta_seq['id'] = meta_seq['id'].astype(str)
+    id_list = meta_seq['id'].values.tolist()
+    task_ids = np.array_split(id_list, NTASKS)[JOB_ID].tolist()
+    meta_seq = meta_seq[meta_seq['id'].isin(task_ids)]
     samples = meta_seq['id'].values
     return meta_seq, samples
 #END_NEW#
@@ -289,9 +297,9 @@ def main():
     
     # cpu = multiprocessing.cpu_count()
     cpu = 16
-    
+    people = int(args.numberPeople)
+
     print('CPUs available: {}'.format(cpu))
-    
     try:
         subscribeToStreams(args.chainName, args.multichainLoc, args.datadir)
         print('Subscribed to streams') 

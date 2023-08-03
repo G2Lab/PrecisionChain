@@ -29,8 +29,10 @@ import json
 import warnings
 import random
 warnings.simplefilter("ignore")
-import persons
 
+# Read environmental variables
+NTASKS = int(os.environ.get('NTASKS', 1))
+JOB_ID = int(os.environ.get('SLURM_ARRAY_TASK_ID', 0))
 
 # In[3]:
 
@@ -38,6 +40,9 @@ def loadPeople(metafile, num):
     #BEGIN_NEW#
     samples = pd.read_csv(metafile, usecols = [0,1]) 
     samples = samples.iloc[:num]
+    id_list = samples['id'].values.tolist()
+    task_ids = np.array_split(id_list, NTASKS)[JOB_ID].tolist()
+    samples = samples[samples['id'].isin(task_ids)]
     people = samples['id'].values
     #END_NEW
     return people
@@ -239,8 +244,6 @@ def loadData(dataPath, table, keys, num):
     df = pd.read_csv(dataPath)
     df = df[df['person_id'].isin(people)]
     df['person_id'] = df['person_id'].astype(str)
-    # Loads only the people/NTASKS number of people
-    df = df[df.person_id.isin(persons.getChunk())]
     #get concept
     concept_type = df.columns[2]
     concept_type = concept_type.split('_')[0]
@@ -432,6 +435,7 @@ def main():
     start = time.time()
     # cpu = multiprocessing.cpu_count()
     cpu = 16
+    num = int(args.numberPeople)
     print('CPUs available: {}'.format(cpu))
     tables = parseTables(args.tables)
     person = loadPeople(args.metafile, num) #NEW_LINE#
