@@ -31,7 +31,9 @@ import psutil
 from io import BytesIO, StringIO
 warnings.simplefilter("ignore")
 
-
+# Read environmental variables
+NTASKS = int(os.environ.get('NTASKS', 1))
+JOB_ID = int(os.environ.get('SLURM_ARRAY_TASK_ID', 0))
 
 # In[2]:
 
@@ -85,6 +87,7 @@ def metadataPerson(metaFile, variantFile, numPeople):
     request = 'bcftools query -l {} | head -n {}'.format(variantFile, numPeople)
     output = subprocess.check_output(request, shell = True)
     samples = output.decode().split()
+    samples = np.array_split(samples, NTASKS)[JOB_ID].tolist()
     #metadata
     meta = pd.read_csv(f'{metaFile}')
     meta['id'] = meta['id'].astype(str)
@@ -133,7 +136,7 @@ def publishMetadata(chainName, multichainLoc, datadir, meta):
 
 
 ### PCA
-def loadData(pcaFile, samples):
+def loadData(pcaFile, samples, num):
     '''
     Load sample principal components
     Input:
@@ -141,18 +144,20 @@ def loadData(pcaFile, samples):
     '''
     #Sample PCs
     sample_pcs = pd.read_csv(f'{pcaFile}pca/samples_pcs.csv')
-    sample_pcs = sample_pcs.iloc[:len(samples)]
+    # divide num by NTASKS to get the whole number of samples to load
+    batch, _ = divmod(num, NTASKS)
+    sample_pcs = sample_pcs.iloc[JOB_ID*batch:len(samples)]
     #Set sample IDs
     sample_pcs.index = samples
     return sample_pcs
 
-def publishSamplePC(chainName, multichainLoc, datadir, pcaFile, samples):
+def publishSamplePC(chainName, multichainLoc, datadir, pcaFile, samples, num):
     '''
     Insert samples principal components
     Input:
         file paths for pca data and sample ids
     '''
-    sample_pcs = loadData(pcaFile, samples)
+    sample_pcs = loadData(pcaFile, samples, num)
     for i, row in sample_pcs.iterrows():
         streamName = 'analysis'
         streamKeys = ['PCA', i]
@@ -285,7 +290,7 @@ def main():
         publishMetadata(args.chainName, args.multichainLoc, args.datadir, meta)
         
         #publish pca
-        publishSamplePC(args.chainName, args.multichainLoc, args.datadir, args.pcafile, samples)
+        publishSamplePC(args.chainName, args.multichainLoc, args.datadir, args.pcafile, samples, person)
 
         #publish kinship
         publishRelatednessSNP(args.chainName, args.datadir, samples, args.relatedfile)
