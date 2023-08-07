@@ -13,6 +13,8 @@ PPL_ES=1200
 PPL_AF=400
 PPL_BC=400
 
+python buildChain.py -cn=$CN --datadir=$DR
+
 #CLINICAL
 
 python3 createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
