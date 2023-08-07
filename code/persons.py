@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-# Read environmental variables
+# Read envirental variable
 NTASKS = int(os.environ.get('NTASKS', 1))
 JOB_ID = int(os.environ.get('SLURM_ARRAY_TASK_ID', 0))
 
