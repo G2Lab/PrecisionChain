@@ -29,6 +29,7 @@ import json
 import warnings
 import random
 warnings.simplefilter("ignore")
+import traceback
 
 # Read environmental variables
 NTASKS = int(os.environ.get('NTASKS', 1))
@@ -494,6 +495,7 @@ def main():
             print( '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
     except Exception as e:
         print(e)
+        traceback.print_exc()
         sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
         quit()
 

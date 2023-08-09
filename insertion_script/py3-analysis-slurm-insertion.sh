@@ -1,5 +1,5 @@
 #! /bin/bash
-
+set -e
 CN=query_4k
 DR='/gpfs/commons/groups/gursoy_lab/ubaymuradov/main_node'
 PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
