@@ -291,7 +291,7 @@ def subscribeToStreams(chainName, multichainLoc, datadir, hierarchyPath, dataPat
 # In[14]:
 
 
-def processTable(chainName, multichainLoc, datadir, hierarchyPath, dataPath, table, num, person):
+def processTable(hierarchyPath, dataPath, table, num, person):
     '''
     Process the data table to get ready for insertion - includes extracting the streams and stream buckets, keys, and values
     Inputs:
@@ -458,7 +458,7 @@ def main():
         
         for table in tables:
             #process the data to be inserted into the relevant pieces of information
-            concept_type, df, keys_df = processTable(args.chainName, args.multichainLoc, args.datadir, args.hierarchyPath, args.dataPath, table, num, person)
+            concept_type, df, keys_df = processTable(args.hierarchyPath, args.dataPath, table, num, person)
             #record the streams used
             stream_dictionary, stream_concept_dictionary = assignedStreamDictionary(df)
             #publish the mapping stream with the streams and buckets created
