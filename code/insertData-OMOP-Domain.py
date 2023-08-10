@@ -289,7 +289,7 @@ def subscribeToStreams(chainName, multichainLoc, datadir, hierarchyPath, dataPat
 # In[14]:
 
 
-def processTable(hierarchyPath, dataPath, table, num, person):
+def processTable(hierarchyPath, dataPath, table, person):
     '''
     Process the data table to get ready for insertion - includes extracting the streams and stream buckets, keys, and values
     Inputs:
