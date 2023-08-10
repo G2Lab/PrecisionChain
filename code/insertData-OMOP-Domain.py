@@ -495,7 +495,7 @@ def main():
         print(e)
         traceback.print_exc()
         sys.stderr.write("\nERROR: Failed stream publishing. Please try again.\n")
-        quit()
+        sys.exit()
 
     end = time.time()
     e = int(end - start)
