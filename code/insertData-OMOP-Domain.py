@@ -231,15 +231,13 @@ def processDateKey(keys_df):
 
 
 #load the data and organise the data into the stream_concept, keys and values
-def loadData(dataPath, table, keys, num):
+def loadData(dataPath, table, keys, people):
     '''
     For a given table, load the data and extract the concepts, keys, values
     Inputs:
         dataPath - path for the data that is being added
         table - the specific table being added
     '''
-    ## extract people
-    people = loadPeople(dataPath, num)
     #load data and extract relevant data
     dataPath = '{}{}.csv'.format(dataPath, table) 
     df = pd.read_csv(dataPath)
@@ -303,7 +301,7 @@ def processTable(hierarchyPath, dataPath, table, num, person):
     stream_buckets = numStreamBuckets(hierarchyPath, dataPath, table, person)
     #Get keys and values to publish
     keys = processKeys(dataPath, table)
-    concept_type, keys_df, values_df = loadData(dataPath, table, keys, num)
+    concept_type, keys_df, values_df = loadData(dataPath, table, keys, person)
     #Assign each concept to a super concept stream
     concept_stream = assignConceptStream(hierarchyPath, dataPath, table, person)
     values_df['concept_stream'] = concept_stream
