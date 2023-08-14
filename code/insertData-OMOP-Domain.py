@@ -456,7 +456,7 @@ def main():
         
         for table in tables:
             #process the data to be inserted into the relevant pieces of information
-            concept_type, df, keys_df = processTable(args.hierarchyPath, args.dataPath, table, num, person)
+            concept_type, df, keys_df = processTable(args.hierarchyPath, args.dataPath, table, person)
             #record the streams used
             stream_dictionary, stream_concept_dictionary = assignedStreamDictionary(df)
             #publish the mapping stream with the streams and buckets created
