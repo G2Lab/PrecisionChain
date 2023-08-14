@@ -23,7 +23,7 @@ python3 insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_voc
 
 python3 createStream-OMOP-Person.py -cn=$CN --datadir=$DR
 
-python3 insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL -mf=$PT/data/samples/metadata.csv
+python3 insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/samples/metadata.csv -np=$PPL -mf=$PT/data/samples/metadata.csv
 
 #GENETIC
 python3 createStream-variants.py -cn=$CN --datadir=$DR
