@@ -219,8 +219,7 @@ def main():
 
     start = time.time()
     
-    # cpu = multiprocessing.cpu_count()
-    cpu = 16
+    cpu = multiprocessing.cpu_count()
     print('CPUs available: {}'.format(cpu))
     
     global annotation_path
