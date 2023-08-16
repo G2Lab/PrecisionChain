@@ -7,8 +7,8 @@ AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
 BENCHMARKS='/gpfs/commons/groups/gursoy_lab/ubaymuradov/benchmarks'
 
 # clean up $DATADIR
-rm -rf $DATADIR/$CN
-mkdir $DATADIR
+rm -rf $DR/$CN
+mkdir $DR
 
 #SAMPLE NUMBERS
 PPL=4000
