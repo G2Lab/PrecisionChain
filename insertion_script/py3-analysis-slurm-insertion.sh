@@ -8,7 +8,6 @@ BENCHMARKS='/gpfs/commons/groups/gursoy_lab/ubaymuradov/benchmarks'
 
 # clean up $DATADIR
 rm -rf $DR/$CN
-mkdir $DR
 
 #SAMPLE NUMBERS
 PPL=4000
