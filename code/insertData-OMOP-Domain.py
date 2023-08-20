@@ -433,7 +433,7 @@ def main():
 
     start = time.time()
     # cpu = multiprocessing.cpu_count()
-    cpu = 16
+    cpu = 23
     num = int(args.numberPeople)
     print('CPUs available: {}'.format(cpu))
     tables = parseTables(args.tables)
