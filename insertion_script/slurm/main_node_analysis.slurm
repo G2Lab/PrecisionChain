@@ -41,16 +41,26 @@ nohup bash /gpfs/commons/groups/gursoy_lab/ubaymuradov/PrecisionChain/insertion_
 echo "started" >$DR/status.txt
 python3 $CODE/buildChain.py -cn=$CN -dr=$DR
 # write stream names to a file
-python3 $CODE/createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/clinical/
+python3 $CODE/createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
 python3 $CODE/createStream-OMOP-Person.py -cn=$CN --datadir=$DR
 python3 $CODE/createStream-variants.py -cn=$CN --datadir=$DR
 python3 $CODE/createStream-gtf.py -cn=$CN -dr=$DR
 
 sbatch $CODE/../insertion_script/slurm/nodes_analysis.slurm
 
-python3 $CODE/insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/clinical/ --personPath=$PT/clinical/person.csv
-python3 $CODE/insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/clinical/
-python3 $CODE/insertData-variantPerson.py -cn=$CN --datadir=$DR -mf=$PT/mapping_vocab/person_sample_mapping.txt -dp=$PT/vcf
+python3 $CODE/insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL -mf=$PT/data/samples/metadata.csv
+python3 $CODE/insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL -mf=$PT/data/samples/metadata.csv
+# WGS
+python3 $CODE/insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
+# WES
+python3 $CODE/insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+# AFFYMETRIX
+python3 $CODE/insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+# BEADCHIP
+python3 $CODE/insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+# Analysis
+python3 $CODE/insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS
+
 #python3 $CODE/insertData-gtf.py -cn=$CN -dr=$DR -gp=$PT/gtf/ -vp=$PT/vcf/
 
 while true; do
