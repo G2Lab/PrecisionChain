@@ -104,7 +104,6 @@ def publishMetadata(chainName, multichainLoc, datadir, meta):
     '''
     ## metadata insert
     for _, row in meta.iterrows():
-        row['id']
         streamName = 'mappingData_metadata'
         streamKeys = '{}'.format(row['id'])
         streamValues = '{'+'"json":{}'.format(json.dumps(list(row.values[1:]))) + '}'
@@ -146,7 +145,8 @@ def loadData(pcaFile, samples, num):
     sample_pcs = pd.read_csv(f'{pcaFile}pca/samples_pcs.csv')
     # divide num by NTASKS to get the whole number of samples to load
     batch, _ = divmod(num, NTASKS)
-    sample_pcs = sample_pcs.iloc[JOB_ID*batch:len(samples)]
+    start_idx = JOB_ID * batch
+    sample_pcs = sample_pcs.iloc[start_idx:start_idx + len(samples)]
     #Set sample IDs
     sample_pcs.index = samples
     return sample_pcs
@@ -294,7 +294,6 @@ def main():
 
         #publish kinship
         publishRelatednessSNP(args.chainName, args.datadir, samples, args.relatedfile)
-
                 
         end = time.time()
         e = int(end - start)

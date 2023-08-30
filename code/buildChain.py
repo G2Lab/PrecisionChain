@@ -65,11 +65,16 @@ def createChain(chainName, multichainLoc, datadir):
         runCommand.split()
     )  # returns 0 whether or not it had an error; subprocess hangs
     # because output is too long (known subprocess bug); just relying on chain creation to catch bug
+
+
     
     # capture output of getinfo command
-    result = subprocess.run(queryCommand.split(), capture_output=True, text=True).stdout
+    result = subprocess.run(queryCommand.split(), stdout=PIPE)
+    stdout_str = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else result.stdout
+    json_data = json.loads(stdout_str)
+    node_address = json_data.get('nodeaddress')
     with open(datadir + "/nodeaddress.txt", "w") as f:
-        f.write(json.loads(result)["nodeaddress"])
+        f.write(node_address)
     time.sleep(1)
     return
 

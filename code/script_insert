@@ -14,17 +14,17 @@ module load multichain
 module load bcftools
 conda activate blockchain_env
 
-CN=query_4k
+CN=test
 DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
 PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
 AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
 
 #SAMPLE NUMBERS
-PPL=4000
-PPL_GS=2000
-PPL_ES=1200
-PPL_AF=400
-PPL_BC=400
+PPL=100
+PPL_GS=100
+PPL_ES=0
+PPL_AF=0
+PPL_BC=0
 
 check_connection() {
     multichain-cli $CN --datadir=$DR getinfo 2>&1
@@ -63,19 +63,19 @@ run_python_scripts() {
     python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
 
     ##WES
-    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+    #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
 
-    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+    #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
 
     ##AFFYMETRIX
-    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+    #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
 
-    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+    #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
 
     ##BEADCHIP
-    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+    #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
 
-    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+    #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
 
     ##Analysis
     python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
