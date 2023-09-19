@@ -12,7 +12,7 @@ PPL_ES=5
 PPL_AF=5
 PPL_BC=5
 
-python buildChain.py -cn=$CN --datadir=$DR
+python3 buildChain.py -cn=$CN --datadir=$DR
 
 #CLINICAL
 
