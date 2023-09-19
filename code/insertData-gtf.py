@@ -159,7 +159,7 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
     request = 'bcftools query -r {}:{}-{} -f \'%POS \' {}'.format(chrom, position[0], position[1], variantFile)
     output = subprocess.check_output(request, shell = True)  
     variants = output.decode('utf-8').split(' ')[:-1]
-    variants = [int(v) for v in variants]
+    variants = [int(v) for v in variants][:5]
     #BEGIN_NEW#
     ##get annotations
     clinvar =pd.read_csv(f'{annotation_path}/clinvar_annot.txt')
@@ -201,6 +201,7 @@ def publishGTF(arguments):
         #read in gtf file using data
         df = read_gtf(geneFile, 
                       usecols=['seqname','gene_id','feature','start','end', 'gene_type', 'gene_name','strand'])
+        df = df.head(5)
         df.apply(publishToStreams, axis =1, args= (chainName, multichainLoc, datadir, chrom, variantFile))
     return
 
