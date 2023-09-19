@@ -16,7 +16,7 @@ python3 buildChain.py -cn=$CN --datadir=$DR
 
 #CLINICAL
 
-python3 createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/clinical/
+python3 createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/clinical/ -tb=condition_occurrence
 
 python3 insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/clinical/ -np=$PPL -mf=$PT/samples/metadata.csv -tb=condition_occurrence
 
