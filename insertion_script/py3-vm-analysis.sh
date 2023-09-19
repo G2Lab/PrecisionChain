@@ -1,9 +1,9 @@
 #! /bin/bash
 set -e
 CN=query_4k
-DR=/mnt/disks/multichain_data
-PT=/mnt/disks/test-data
-AT=/mnt/disks/test-data/preprocessing
+DR=/mnt/disks/data/multichain_data
+PT=/mnt/disks/data/test-data
+AT=/mnt/disks/data/test-data/preprocessing
 
 #SAMPLE NUMBERS
 PPL=5
