@@ -28,19 +28,19 @@ python3 insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/clinical/ --pers
 python3 createStream-variants.py -cn=$CN --datadir=$DR
 
 ##WGS
-python3 insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wgs -mf=$PT/samples/metadata.csv -np=$PPL_GS -sq=WGS
+python3 insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wgs -mf=$PT/samples/metadata.csv -np=$PPL_GS -sq=WGS -vf=21
 
-python3 insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wgs -mf=$PT/samples/metadata.csv -np=$PPL_GS -sq=WGS
+python3 insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wgs -mf=$PT/samples/metadata.csv -np=$PPL_GS -sq=WGS -vf=21
 
 ##WES
-python3 insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wes -mf=$PT/samples/metadata.csv -np=$PPL_ES -sq=WES
+python3 insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wes -mf=$PT/samples/metadata.csv -np=$PPL_ES -sq=WES -vf=21
 
-python3 insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wes -mf=$PT/samples/metadata.csv -np=$PPL_ES -sq=WES
+python3 insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/vcf/wes -mf=$PT/samples/metadata.csv -np=$PPL_ES -sq=WES -vf=21
 
 ##AFFYMETRIX
-python3 insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/vcf/affymetrix -mf=$PT/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+python3 insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/vcf/affymetrix -mf=$PT/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix -vf=21
 
-python3 insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/vcf/affymetrix -mf=$PT/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+python3 insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/vcf/affymetrix -mf=$PT/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix -vf=21
 
 ##BEADCHIP
 python3 insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/vcf/beadchip -mf=$PT/samples/metadata.csv -np=$PPL_BC -sq=BeadChip -vf=21
