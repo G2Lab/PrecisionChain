@@ -2,7 +2,7 @@
 set -e
 CN=query_4k
 DR=/mnt/disks/data/multichain_data
-PT=/mnt/disks/data/test-data
+PT=/mnt/disks/data/test-data/data
 AT=/mnt/disks/data/test-data/preprocessing
 
 #SAMPLE NUMBERS
