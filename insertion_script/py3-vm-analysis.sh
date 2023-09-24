@@ -22,7 +22,7 @@ python3 insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/mapping_vocab/CO
 
 python3 createStream-OMOP-Person.py -cn=$CN --datadir=$DR
 
-python3 insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/clinical/ --personPath=$PT/samples/metadata.csv -np=$PPL -mf=$PT/samples/metadata.csv -tb=condition_occurrence
+python3 insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/clinical/ --personPath=$PT/clinical/person.csv -np=$PPL -mf=$PT/samples/metadata.csv -tb=condition_occurrence
 
 #GENETIC
 python3 createStream-variants.py -cn=$CN --datadir=$DR
