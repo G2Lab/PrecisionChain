@@ -74,6 +74,21 @@ def extractVariantsGenotypes(position, genotype):
 # In[4]:
 
 
+def extractVariantsStored(chainName, datadir, chrom):
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants chrom_{} false 999'.format(chainName, datadir, chrom)
+    items = subprocess.check_output(queryCommand.split())
+    matches = json.loads(items, parse_int= int)
+    variants = []
+    for match in matches[:-1]:
+        if 'txid' in match['data']:
+            items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
+            matches_txid = json.loads(items, parse_int= int)
+            variants.extend([s.split(':')[0] for s in matches_txid['json']])
+        else:
+            variants.extend([s.split(':')[0] for s in match['data']['json']])
+    return set(variants)
+
+
 def homozgyousPersons(chainName, multichainLoc, datadir, chrom, variant):
     '''
     Extract the person ids for those who have homozygous ref (0|0) alleles.
@@ -207,9 +222,15 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, 
         genotype - allele of interest i.e. 0|0 1|1 
         metadata - keys for metadata to filter on
     '''
-    variants, genotype = extractVariantsGenotypes(variants, genotype)
+    variants_all = extractVariantsStored(chainName, datadir, chrom)
+    variants = variants.replace(' ','').split(',')
+    filtered_variants = [variant for variant in variants if variant in variants_all]
+    unavailable_variants = [variant for variant in variants if variant not in variants_all]
+    filtered_variants, genotype = extractVariantsGenotypes(filtered_variants, genotype)
+    
+    #POSITIONS
     variants_dict = {}
-    for variant in variants:
+    for variant in filtered_variants:
         variants_dict[variant] = queryVariant(chainName, multichainLoc, datadir, chrom, variant, genotype)
     #get gene info
     #gene_df = queryVariantGene(chainName, multichainLoc, datadir, variants, chrom)
@@ -229,6 +250,7 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, 
     variants_json = variants_df.to_json(orient = 'index')
 
     print(variants_json)
+    print(f'The following variants are not stored on chain {unavailable_variants}')
     return variants_json
         
 

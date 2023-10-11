@@ -109,6 +109,19 @@ def exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom):
 
 # In[543]:
 
+def extractVariantsStored(chainName, datadir, chrom):
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants chrom_{} false 999'.format(chainName, datadir, chrom)
+    items = subprocess.check_output(queryCommand.split())
+    matches = json.loads(items, parse_int= int)
+    variants = []
+    for match in matches[:-1]:
+        if 'txid' in match['data']:
+            items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
+            matches_txid = json.loads(items, parse_int= int)
+            variants.extend([s.split(':')[0] for s in matches_txid['json']])
+        else:
+            variants.extend([s.split(':')[0] for s in match['data']['json']])
+    return set(variants)
 
 def queryVariantGene(chainName, multichainLoc, datadir, variants, chrom):
     '''
@@ -533,17 +546,22 @@ def extractVariantPersonIDs(chainName, datadir, chrom, variant):
     '''
     Get the IDs of patients with specific variant
     '''
-    variant_dict = {}
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {} false 9999999999999999'.format(chainName, datadir, chrom, variant)
-    items = subprocess.check_output(queryCommand.split())
-    matches = json.loads(items, parse_int= int)
-    persons_gt = {}
-    for match in matches:
-        pos, gt = match['keys'][0], match['keys'][3]
-        persons_gt[(pos, gt)] =  match['data']['json']
-    return persons_gt
+    variants_all = extractVariantsStored(chainName, datadir, chrom)
+    if variant in variants_all:
+        variant_dict = {}
+        queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {} false 9999999999999999'.format(chainName, datadir, chrom, variant)
+        items = subprocess.check_output(queryCommand.split())
+        matches = json.loads(items, parse_int= int)
+        persons_gt = {}
+        for match in matches:
+            pos, gt = match['keys'][0], match['keys'][3]
+            persons_gt[(pos, gt)] =  match['data']['json']
+        return persons_gt
+    else:
+        print(f"Variant {variant} not in chain")
+        return None
 
-def queryDemographics(chainName, multichainLoc, datadir, person_ids):
+def queryDemographics(chainName, multichainLoc, datadir, person_ids, cohortKeys):
     '''
     Get demographic data of returned patients
     '''
@@ -606,25 +624,28 @@ def queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys
         
     return data
 
-def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, chrom, variant, gt):
+def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, cohortKeys, chrom, variant, gt):
     '''
     Overall query takes variant of interest (position and gt) and returns specific clinical data on patients with variant
     Note only 1 variant per search
     '''
     ##extract person_ids
     persons_gt = extractVariantPersonIDs(chainName, datadir, chrom, variant)
-    searchKeys = searchKeys.split(',')
-    ##filter for gt of interest
-    for key in persons_gt:
-        if key[1] == gt:
-            person_ids = persons_gt[key]
-    ##get the info of interest
-    if searchKeys[0] == 'demographics':
-        data = queryDemographics(chainName, multichainLoc, datadir, person_ids)
-    else:
-        data = queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys)
+    if persons_gt is not None:
+        searchKeys = searchKeys.split(',')
+        ##filter for gt of interest
+        for key in persons_gt:
+            if key[1] == gt:
+                person_ids = persons_gt[key]
+        ##get the info of interest
+        if searchKeys[0] == 'demographics':
+            data = queryDemographics(chainName, multichainLoc, datadir, person_ids, cohortKeys)
+        else:
+            data = queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys)
 
-    return data
+        return data
+    else:
+        return
 
 # ## log queries
 
@@ -689,7 +710,7 @@ def main():
     try:
         subscribeToStream(args.chainName, args.multichainLoc, args.datadir)
         if args.query == action_choices[0]:
-            queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.chromosome, args.positions, args.genotype)
+            queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.cohortKeys, args.chromosome, args.positions, args.genotype)
         
         ##deprecated
         elif args.query == action_choices[1]:
