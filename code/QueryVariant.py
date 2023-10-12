@@ -240,7 +240,7 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, 
     #variants_df = variants_df.merge(gene_df, left_index = True, right_on = 'variant')
 
     #filter for patients with correct metadata
-    if metadata != 'none':
+    if metadata:
         metadata = metadata.split(',')
         patients = filterPatientsMetadata(chainName, multichainLoc, datadir, metadata)
         patients = [str(x) for x in patients]
@@ -642,9 +642,9 @@ def getPatientVariantAnnotation(chainName, multichainLoc, datadir, chrom, annots
     Output:
         dictionary of dataframes (one for each annotation type searched). each df contains information on the variants AND patients with non-reference allele in those variants
     '''
-    if gene == 'none':
+    if not gene:
         annot_query_data = queryAnnotationVariant(chainName, multichainLoc, datadir, chrom, annots)
-    if annots == 'none':
+    if not annots:
         annot_query_data = queryVariantAnnotations(chainName, multichainLoc, datadir, chrom, gene)
 
     for annot in annot_query_data:
@@ -714,10 +714,10 @@ def main():
     parser.add_argument("-ps", "--positions",required=(action_choices[0:2] in sys.argv), help = "positions to search", default = "all")
     parser.add_argument("-gt", "--genotypes", required=(action_choices[0] in sys.argv), help = "genotypes to search", default = "all") #NEW_LINE#
     parser.add_argument("-pi", "--person_ids", required=(action_choices[1] in sys.argv), help = "person_ids to search")
-    parser.add_argument("-gn", "--gene", required=(action_choices[2] in sys.argv), help = "genes to search", default = 'none') #NEW_LINE#
+    parser.add_argument("-gn", "--gene", required=(action_choices[2] in sys.argv), help = "genes to search", default = None) #NEW_LINE#
     parser.add_argument("-ir", "--inputRange", required=(action_choices[3] in sys.argv), help = "MAF range to search")
-    parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default="none") #NEW_LINE
-    parser.add_argument("-at", "--annotations", required=(action_choices[4] in sys.argv), help = "annotations to search", default="none") #NEW_LINE
+    parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default=None) #NEW_LINE
+    parser.add_argument("-at", "--annotations", required=(action_choices[4] in sys.argv), help = "annotations to search", default=None) #NEW_LINE
 
     args = parser.parse_args()
     start = time.time()
@@ -737,8 +737,8 @@ def main():
             MAFqueries(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.inputRange)
         #BEGIN_NEW#        
         elif args.view == action_choices[4]:
-            if args.annotations == 'none':
-                 if (not hasattr(args, 'gene')) or (args.gene is None) or (args.gene == 'none'):
+            if not args.annotations:
+                 if (not hasattr(args, 'gene')) or (args.gene is None):
                      print('Must specify gene or annotations')
             annotated_variants = getPatientVariantAnnotation(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.annotations, args.gene)
             print(annotated_variants)
