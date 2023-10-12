@@ -58,7 +58,6 @@ def extractVariantsGenotypes(position, genotype):
         position - the user-inputted variant positions
         genotype - the user-inputted genotype positions
     '''
-    position = position.replace(' ','').split(',')
     if genotype != 'all': #NEW_LINE#
         genotype = genotype.replace(' ','').split(',')
         ##if heterozygous gt queried, parse gt to right format stored in blockchain (i.e. 1|0 )
