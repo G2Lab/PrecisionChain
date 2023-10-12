@@ -26,10 +26,12 @@ import pandas as pd
 import json
 import warnings
 import multiprocessing
+import traceback
 import numpy as np
 from itertools import compress
 from datetime import datetime
 warnings.simplefilter(action='ignore')
+
 
 
 # In[ ]:
@@ -749,6 +751,7 @@ def main():
     
     except Exception as e:
         print(e)
+        traceback.print_exc()
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         
