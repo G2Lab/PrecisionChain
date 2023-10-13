@@ -539,7 +539,6 @@ def queryMetadata(chainName, multichainLoc, datadir, search_values):
     #Parse the search values specified
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     all_patient_ids = {}
-    search_values = search_values.split(',')
     for search_value in search_values:
         filtered_dicts = [d for d in matches if all(key in d['keys'] for key in [search_value])]
         return_value = [[x for x in d["keys"] if x!=search_value][0] for d in filtered_dicts]
