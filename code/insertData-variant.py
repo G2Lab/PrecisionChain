@@ -478,7 +478,7 @@ def main():
 
     start = time.time()
     
-    cpu = multiprocessing.cpu_count()
+    cpu = multiprocessing.cpu_count() * 2
     person = int(args.numberPeople)
     cpu = min(cpu, person)
     print('CPUs available: {}'.format(cpu))

@@ -432,8 +432,8 @@ def main():
     args = parser.parse_args()
 
     start = time.time()
-    # cpu = multiprocessing.cpu_count()
-    cpu = 2
+    cpu = multiprocessing.cpu_count() * 2
+    # cpu = 2
     num = int(args.numberPeople)
     print('CPUs available: {}'.format(cpu))
     tables = parseTables(args.tables)

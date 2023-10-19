@@ -283,8 +283,8 @@ def main():
     num = int(args.numberPeople)
     tables = parseTables(args.tables)
     processes = []
-    # cpu = multiprocessing.cpu_count()
-    cpu = 2
+    cpu = multiprocessing.cpu_count() * 2
+    # cpu = 2
     print('CPUs available: {}'.format(cpu))
 
     try:
