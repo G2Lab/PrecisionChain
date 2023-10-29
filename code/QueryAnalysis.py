@@ -60,9 +60,9 @@ def querySamplePCA(chainName, datadir, sampleSearch, kSearch):
     sample_pcs = [(match_['keys'][1], match_['data']['json']) for match_ in matches]
     pc_df = pd.DataFrame.from_dict(dict(sample_pcs)).T
     #Filter based on search
-    sampleSearch = sampleSearch.split(',')
     kSearch = int(kSearch)
-    if sampleSearch != ['none']:
+    if sampleSearch:
+        sampleSearch = sampleSearch.split(',')
         pc_df = pc_df.loc[sampleSearch]
         pc_df = pc_df.drop_duplicates()
     if kSearch != 20:
@@ -86,8 +86,8 @@ def querySampleRelatedness(chainName, datadir, sampleSearch):
     sample_snps = [(match_['keys'][1], match_['data']['json']) for match_ in matches if match_['keys'][1].upper() != 'AF' ]
     rl_df = pd.DataFrame.from_dict(dict(sample_snps)).T
     #Filter based on search
-    sampleSearch = sampleSearch.split(',')
-    if sampleSearch != ['none']:
+    if sampleSearch:
+        sampleSearch = sampleSearch.split(',')
         rl_df = rl_df.loc[sampleSearch]
     #AF
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {} false 99999999'.format(chainName, datadir, 'AF')
@@ -181,12 +181,13 @@ def queryMetadata(chainName, datadir, search_values):
     #Parse the search values specified
     publishToAuditstream(chainName, datadir, queryCommand)
     all_patient_ids = {}
-    search_values = search_values.split(',')
-    for search_value in search_values:
-        filtered_dicts = [d for d in matches if all(key in d['keys'] for key in [search_value])]
-        return_value = [[x for x in d["keys"] if x!=search_value][0] for d in filtered_dicts]
-        patient_ids = {key:d['data']['json'] for d, key in zip(filtered_dicts, return_value)}
-        all_patient_ids[search_value] = patient_ids
+    if search_values:
+        search_values = search_values.split(',')
+        for search_value in search_values:
+            filtered_dicts = [d for d in matches if all(key in d['keys'] for key in [search_value])]
+            return_value = [[x for x in d["keys"] if x!=search_value][0] for d in filtered_dicts]
+            patient_ids = {key:d['data']['json'] for d, key in zip(filtered_dicts, return_value)}
+            all_patient_ids[search_value] = patient_ids
     print(all_patient_ids)
     return all_patient_ids
 
@@ -227,9 +228,9 @@ def main():
     parser.add_argument("-cn", "--chainName", help = "the name of the chain to store data", default = "chain1")
     parser.add_argument("-ml", "--multichainLoc", help = "path to multichain commands", default = "")
     parser.add_argument("-dr", "--datadir", help = "path to store the chain")
-    parser.add_argument("-ss", "--sampleSearch", required=(action_choices[0:2]in sys.argv), help = "samples to search", default = "none")
+    parser.add_argument("-ss", "--sampleSearch", required=(action_choices[0:2]in sys.argv), help = "samples to search", default = None)
     parser.add_argument("-ks", "--kSearch", required=(action_choices[0]in sys.argv), help = "k loadings to search", default = 20)
-    parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default="none") 
+    parser.add_argument("-md", "--metadata", required=(action_choices[0] in sys.argv), help = "metadata to search or filter on", default = None) 
 
     args = parser.parse_args()
     start = time.time()
