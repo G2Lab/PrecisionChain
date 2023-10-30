@@ -63,7 +63,8 @@ def querySamplePCA(chainName, datadir, sampleSearch, kSearch):
     kSearch = int(kSearch)
     if sampleSearch:
         sampleSearch = sampleSearch.split(',')
-        pc_df = pc_df.loc[sampleSearch]
+        valid_samples = pc_df.index.intersection(sampleSearch)
+        pc_df = pc_df.loc[valid_samples]
         pc_df = pc_df.drop_duplicates()
     if kSearch != 20:
         pc_df = pc_df.iloc[:,:kSearch]
