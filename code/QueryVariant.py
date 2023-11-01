@@ -114,7 +114,7 @@ def homozgyousPersons(chainName, multichainLoc, datadir, chrom, variant):
     for persons in variant.values():
         non_ref.extend(persons)
 
-    homozygous = list(set(all_persons) - set(non_ref))
+    homozygous = list(set(all_persons) - set([str(id) for id in non_ref]))
     return homozygous
 
 
@@ -253,7 +253,8 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, 
 
     print(variants_json)
     print(f'The following variants are not stored on chain {unavailable_variants}')
-    return variants_json, variant_annotations
+    #return variants_json, variant_annotations
+    return variants_json
         
 
 
@@ -662,7 +663,7 @@ def getPatientVariantAnnotation(chainName, multichainLoc, datadir, chrom, annots
         annot_query_data = queryVariantAnnotations(chainName, multichainLoc, datadir, chrom, gene)
     elif annots:
         annot_query_data = queryAnnotationVariant(chainName, multichainLoc, datadir, chrom, annots)
-    elif variants:
+    elif variants and variants != 'all':
         return getVariantAnnotations(chainName, multichainLoc, datadir, chrom, variants)
 
     for annot in annot_query_data:
@@ -756,9 +757,9 @@ def main():
         #BEGIN_NEW#        
         elif args.view == action_choices[4]:
             if not args.annotations:
-                 if (not hasattr(args, 'gene')) or (args.gene is None):
-                     print('Must specify gene or annotations')
-            annotated_variants = getPatientVariantAnnotation(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.annotations, args.gene)
+                 if (not hasattr(args, 'gene')) or (args.gene is None) or (args.positions is None):
+                     print('Must specify gene, variant or annotations')
+            annotated_variants = getPatientVariantAnnotation(args.chainName, args.multichainLoc, args.datadir, args.chromosomes, args.annotations, args.gene, args.positions)
             print(annotated_variants)
         #END_NEW
         end = time.time()

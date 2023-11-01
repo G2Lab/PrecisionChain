@@ -35,7 +35,10 @@ def parseKeys(cohortKeys, searchKeys):
 
 
 # In[ ]:
-
+def get_json_payload_from_txid(txid, chainName, datadir):
+    queryCommand = 'multichain-cli {} -datadir={} gettxoutdata {} 0'.format(chainName, datadir, txid)
+    items = subprocess.check_output(queryCommand.split())
+    return items
 
 #Given a chain name subscribe to audit log stream to ensure query is recorded
 def subscribeToStream(chainName, multichainLoc, datadir):
@@ -140,10 +143,33 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys, domain = Fa
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     #BEGIN_NEW#
     demo = [match_['data']['json'] for match_ in matches]
-    print(demo)
+    #print(demo)
     #END_NEW#
     return matches
 
+def queryGroupDemographics(chainName, multichainLoc, datadir, searchKeys):
+    """ retrieves person demographics of the full group, done by data point eg. birth_datetime """
+    if isinstance(searchKeys,str):
+        keys = searchKeys.split(',')
+    else:
+        keys = searchKeys
+    matches = []
+
+    for key in keys:
+        queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems person_demographics {}'.format(chainName, datadir, key)
+        items = subprocess.check_output(queryCommand.split())
+        matches += json.loads(items, parse_int= int)
+        #publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+
+    demo_data= []
+    for match in matches:
+        if 'txid' in match['data']:
+            items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
+            matches_txid = json.loads(items, parse_int= int)
+            demo_data.extend([matches_txid['json']])
+        else:
+            demo_data.extend([match['data']['json']])
+    return demo_data
 
 def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
     '''

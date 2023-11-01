@@ -193,7 +193,7 @@ def queryMetadata(chainName, datadir, search_values):
             return_value = [[x for x in d["keys"] if x!=search_value][0] for d in filtered_dicts]
             patient_ids = {key:d['data']['json'] for d, key in zip(filtered_dicts, return_value)}
             all_patient_ids[search_value] = patient_ids
-    print(all_patient_ids)
+    #print(all_patient_ids)
     return all_patient_ids
 
 
