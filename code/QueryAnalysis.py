@@ -89,7 +89,8 @@ def querySampleRelatedness(chainName, datadir, sampleSearch):
     #Filter based on search
     if sampleSearch:
         sampleSearch = sampleSearch.split(',')
-        rl_df = rl_df.loc[sampleSearch]
+        valid_samples = rl_df.index.intersection(sampleSearch)
+        rl_df = rl_df.loc[valid_samples]
     #AF
     queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems analysis {} false 99999999'.format(chainName, datadir, 'AF')
     items = subprocess.check_output(queryCommand.split())
