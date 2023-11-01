@@ -93,6 +93,14 @@ def extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys):
 
 
 # In[ ]:
+def extractAllPersonIDs(chainName, datadir):
+    ''' Parse all ids from chain'''
+    queryCommand =  f"multichain-cli {chainName} -datadir={datadir} liststreamkeyitems mappingData_person ids false 1"
+    items = subprocess.check_output(queryCommand.split(), stderr=subprocess.STDOUT)
+    items = items.decode("utf-8")
+    matches = json.loads(items.split("\n\n")[-1].split('"data" :')[-1].split(',\n        "confirmations" ')[0])
+    ids = matches['json']
+    return ids
 
 
 def extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person = False):
@@ -114,12 +122,15 @@ def extractPersonStreams(chainName, multichainLoc, datadir, cohortKeys, person =
 
 # In[ ]:
 
-def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
+def queryDemographics(chainName, multichainLoc, datadir, cohortKeys, domain = False):
     ##check if search from running query or person specific query
-    if isinstance(cohortKeys,str):
-        personids = [int(id) for id in cohortKeys.split(',')]
+    if domain:
+        personids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
     else:
-        personids = cohortKeys
+        if isinstance(cohortKeys,str):
+            personids = [int(id) for id in cohortKeys.split(',')]
+        else:
+            personids = cohortKeys
     matches = []
     
     for personid in personids:
@@ -199,7 +210,7 @@ def domainQuery(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
     results = []
     cohortKeys, searchKeys = parseKeys(cohortKeys, searchKeys)
     if searchKeys[0] == 'demographics':
-        results = queryDemographics(chainName, multichainLoc, datadir, cohortKeys)
+        results = queryDemographics(chainName, multichainLoc, datadir, cohortKeys, domain = True)
     elif searchKeys[0] == 'all' :
         results = queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person = False)
     else:

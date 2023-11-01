@@ -80,7 +80,7 @@ def extractVariantsStored(chainName, datadir, chrom):
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     variants = []
-    for match in matches[:-1]:
+    for match in matches:
         if 'txid' in match['data']:
             items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
             matches_txid = json.loads(items, parse_int= int)
@@ -246,13 +246,14 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, 
         patients = [str(x) for x in patients]
         variants_df =  variants_df.applymap(lambda x: [val for val in x if val in patients])
 
+    variant_annotations = getVariantAnnotations(chainName, multichainLoc, datadir, chrom, filtered_variants)
     ##make into json (similar format)
     #variants_df.set_index('variant', inplace = True)
     variants_json = variants_df.to_json(orient = 'index')
 
     print(variants_json)
     print(f'The following variants are not stored on chain {unavailable_variants}')
-    return variants_json
+    return variants_json, variant_annotations
         
 
 
@@ -592,7 +593,7 @@ def queryAnnotationVariant(chainName, multichainLoc, datadir, chrom, annots):
             all_query_data[annot] = pd.DataFrame(all_data, columns = columns[annot])
     return all_query_data
 
-def getVariantAnnotations(match_, key, all_query_data): 
+def getVariantAnnotation(match_, key, all_query_data): 
     '''
     Helper function to extract annotations for variants searched via queryVariantAnnotations
     '''           
@@ -600,6 +601,21 @@ def getVariantAnnotations(match_, key, all_query_data):
     data.extend(match_['data']['json'][key])
     all_query_data[key].append(data)
     return all_query_data
+
+def getVariantAnnotations(chainName, multichainLoc, datadir, chrom, variants):
+    """ Get annotations for a specific variant """
+    if isinstance(variants, str):
+        variants = variants.split(',')
+    annotations = {}
+    for variant in variants:
+        queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems gene_variant_chrom_{} {}'.format(chainName, datadir,
+                                                                                                                chrom, variant)
+        items = subprocess.check_output(queryCommand.split())
+        publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+        matches = json.loads(items, parse_int= int)
+        annotations[variant] = [match_['data']['json'] for match_ in matches]
+    return annotations
+    
 
 def queryVariantAnnotations(chainName, multichainLoc, datadir, chrom, gene):
     '''
@@ -623,28 +639,31 @@ def queryVariantAnnotations(chainName, multichainLoc, datadir, chrom, gene):
         for match_ in matches:
             keys = match_['keys']
             if 'vep' in keys:
-                all_query_data = getVariantAnnotations(match_, 'vep', all_query_data)
+                all_query_data = getVariantAnnotation(match_, 'vep', all_query_data)
             if 'clinvar' in keys:
-                all_query_data = getVariantAnnotations(match_, 'clinvar', all_query_data)
+                all_query_data = getVariantAnnotation(match_, 'clinvar', all_query_data)
             if 'cadd' in keys:
-                all_query_data = getVariantAnnotations(match_, 'cadd', all_query_data)    
+                all_query_data = getVariantAnnotation(match_, 'cadd', all_query_data)    
     all_query_data = {key: pd.DataFrame(all_query_data[key], columns = columns[key]) for key in ['vep','clinvar','cadd']}
     return all_query_data
 
 
-def getPatientVariantAnnotation(chainName, multichainLoc, datadir, chrom, annots, gene):
+def getPatientVariantAnnotation(chainName, multichainLoc, datadir, chrom, annots, gene, variants):
     '''
     Extract patients with non-reference alleles in variants with annotations
     Inputs:
         annots - annotation types to search vep, clinvar, cadd
         gene to search: ENS ID (default is none as search is on annotation type)
+        variants: list of variants to get annotations for
     Output:
         dictionary of dataframes (one for each annotation type searched). each df contains information on the variants AND patients with non-reference allele in those variants
     '''
-    if not gene:
-        annot_query_data = queryAnnotationVariant(chainName, multichainLoc, datadir, chrom, annots)
-    if not annots:
+    if gene:
         annot_query_data = queryVariantAnnotations(chainName, multichainLoc, datadir, chrom, gene)
+    elif annots:
+        annot_query_data = queryAnnotationVariant(chainName, multichainLoc, datadir, chrom, annots)
+    elif variants:
+        return getVariantAnnotations(chainName, multichainLoc, datadir, chrom, variants)
 
     for annot in annot_query_data:
         df = annot_query_data[annot]

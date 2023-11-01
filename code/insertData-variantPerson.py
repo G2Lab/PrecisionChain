@@ -116,7 +116,7 @@ def extractPersonVariants(file, sample_id):
     '''
     ##BCFtools request
     filter_stmt = '''awk '{if($10 != "0|0" && $10 != "0/0") { print } }' '''
-    request = f'''bcftools view -s {sample_id}  -H  {file} | head -10000 | {filter_stmt} '''
+    request = f'''bcftools view -s {sample_id}  -H  {file} | head -100000 | {filter_stmt} '''
     output = subprocess.check_output(request, shell = True)
     ##extract the data from the output
     df = pd.read_csv(BytesIO(output), sep='\t', usecols = [0,1,3,4,9], skiprows = 1, names= ['chrom', 'pos', 'ref', 'alt', 'gt'], index_col = 'pos')

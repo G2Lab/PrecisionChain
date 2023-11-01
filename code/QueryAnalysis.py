@@ -176,7 +176,7 @@ def queryMetadata(chainName, datadir, search_values):
         dictionary with {search_key:{sub_key: list}}, sub_key is the specific value associate with each general metadata search 
     '''
     #Metadata query
-    queryCommand = 'multichain-cli {} -datadir={} liststreamitems mappingData_metadata'.format(chainName, datadir)
+    queryCommand = 'multichain-cli {} -datadir={} liststreamitems mappingData_metadata false 9999999'.format(chainName, datadir)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     #Parse the search values specified
