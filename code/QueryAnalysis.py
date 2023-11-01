@@ -103,48 +103,52 @@ def querySampleRelatedness(chainName, datadir, sampleSearch):
     return rl_df, af
 
 def calculate_mismatch(df):
-    n = df.shape[0] 
-    agmr_matrix = np.zeros((n, n)) 
-    hgmr_matrix = np.zeros((n, n)) 
+    """ Cacluate hgmr and agmr matrices """
+    # Convert dataframe to numpy array
+    df_array = df.to_numpy(dtype=np.int64)  # Ensure the correct data type for calculations
 
-    for i in range(n):
-        for j in range(i+1, n): 
-            x = df.iloc[i]  
-            y = df.iloc[j]  
-            
-            # AGMR: percentage of SNPs on which the two genotypes are not identical
-            agmr = np.mean(x != y)
-            agmr_matrix[i, j] = agmr
-            agmr_matrix[j, i] = agmr  
-            
-            # HGMR: genotype mismatch rate when only the SNPs with homozygous calls for both samples are considered
-            homozygous_indices = (x % 2 == 0) & (y % 2 == 0)  
-            hgmr = np.mean(x[homozygous_indices] != y[homozygous_indices]) if np.sum(homozygous_indices) > 0 else 0
-            hgmr_matrix[i, j] = hgmr
-            hgmr_matrix[j, i] = hgmr 
+    # Calculate AGMR
+    # Using broadcasting to find mismatches across all pairs
+    agmr_matrix = np.not_equal(df_array[:, np.newaxis, :], df_array).mean(axis=2)
 
-    
+    # Calculate HGMR
+    # Identifying homozygous SNPs
+    homozygous = df_array % 2 == 0
+    homozygous_pairs = homozygous[:, np.newaxis, :] & homozygous
+    num_homozygous_pairs = homozygous_pairs.sum(axis=2)
+    no_homozygous_pairs = num_homozygous_pairs == 0
+    num_homozygous_pairs[no_homozygous_pairs] = 1
+    mismatches = np.not_equal(df_array[:, np.newaxis, :], df_array)
+    homozygous_mismatches = mismatches * homozygous_pairs
+    sum_homozygous_mismatches = homozygous_mismatches.sum(axis=2)
+    num_homozygous_pairs_per_sample_pair = homozygous_pairs.sum(axis=2)
+    hgmr_matrix = np.divide(sum_homozygous_mismatches, num_homozygous_pairs_per_sample_pair,
+                            out=np.zeros_like(sum_homozygous_mismatches, dtype=float),
+                            where=num_homozygous_pairs_per_sample_pair != 0)
+
+    # Convert matrices back to pandas DataFrames
     agmr_df = pd.DataFrame(agmr_matrix, index=df.index, columns=df.index)
     hgmr_df = pd.DataFrame(hgmr_matrix, index=df.index, columns=df.index)
 
     return agmr_df, hgmr_df
 
 def determine_relationships(agmr_df, hgmr_df, relationship_parameters):
-    relationships = pd.DataFrame(index=agmr_df.index, columns=agmr_df.columns)
-    
-    for i in agmr_df.index:
-        for j in agmr_df.columns:
-            agmr = agmr_df.loc[i, j]
-            hgmr = hgmr_df.loc[i, j]
+    ''' Use MLE to estimate relationships. See original paper: 
+    https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0179106'''
+    agmr_array = agmr_df.values
+    hgmr_array = hgmr_df.values
+    relationships = np.empty(agmr_array.shape, dtype=object)
 
-            max_likelihood = -np.inf
-            max_rel = None
-            for rel, params in relationship_parameters.items():
-                likelihood = multivariate_normal(mean=params['mean'], cov=params['cov']).pdf([agmr, hgmr])
-                if likelihood > max_likelihood:
-                    max_likelihood = likelihood
-                    max_rel = rel
-            relationships.loc[i, j] = max_rel
+    # Calculate likelihoods for all relationships
+    likelihoods = np.empty((*agmr_array.shape, len(relationship_parameters)))
+    for i, (rel, params) in enumerate(relationship_parameters.items()):
+        likelihoods[:, :, i] = multivariate_normal(mean=params['mean'], cov=params['cov']).pdf(np.stack([agmr_array, hgmr_array], axis=-1))
+    max_indices = np.argmax(likelihoods, axis=-1)
+    mapping = {i: rel for i, rel in enumerate(relationship_parameters.keys())}
+    max_relationships = np.vectorize(mapping.get)(max_indices)
+
+    relationships = pd.DataFrame(max_relationships, index=agmr_df.index, columns=agmr_df.columns)
+
     return relationships
 
 def assess_kinship(rl_df):
@@ -163,7 +167,7 @@ def assess_kinship(rl_df):
 def queryKinship(chainName, datadir, sampleSearch):
     rl_df, af = querySampleRelatedness(chainName, datadir, sampleSearch)
     relationships = assess_kinship(rl_df)
-    print(relationships.to_json())
+    #print(relationships.to_json())
     return relationships.to_json()
 
 # Metadata queries
