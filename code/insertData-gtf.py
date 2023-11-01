@@ -198,9 +198,8 @@ def publishGTF(arguments):
     chainName, multichainLoc, datadir, paths = arguments
     for path in paths:
         geneFile, variantFile, chrom = path
-        #read in gtf file using data
-        df = read_gtf(geneFile, 
-                      usecols=['seqname','gene_id','feature','start','end', 'gene_type', 'gene_name','strand'])
+        #read in gtf file
+        df = pd.read_csv(geneFile, usecols=['seqname','gene_id','feature','start','end', 'gene_type', 'gene_name','strand'])
         df = df.head(5)
         df.apply(publishToStreams, axis =1, args= (chainName, multichainLoc, datadir, chrom, variantFile))
     return

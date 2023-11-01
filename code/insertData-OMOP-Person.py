@@ -170,6 +170,23 @@ def subscribeToStreams(chainName, multichainLoc, datadir):
 # In[9]:
 
 
+def publishAllIDs(chainName, multichainLoc, datadir, person_df):
+    """ Publishes list of all ids into the chain """
+    people = list(person_df['id'].values)
+    people = [int(p) for p in people]
+    streamName = "mappingData_person"
+    streamKeys = 'ids'
+    streamValues =json.dumps({"json":people})#create JSON 
+    publishCommand = [multichainLoc+'multichain-cli', 
+        str('{}'.format(chainName)), 
+        str('-datadir={}'.format(datadir)),
+        'publish',
+        str('{}'.format(streamName)), 
+        str('["{}"]'.format(streamKeys)),
+        str('{}'.format(streamValues))]
+    procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    procPublish.wait()
+
 def publishToMappingStreams(chainName, multichainLoc, datadir, person_df): 
     '''
     The mapping stream records which stream each person is added to
@@ -178,6 +195,7 @@ def publishToMappingStreams(chainName, multichainLoc, datadir, person_df):
         person_df - the table of person_ids and assigned streams
     '''
     #insert into the mapping and demographics stream
+    publishAllIDs(chainName, multichainLoc, datadir, person_df)
     for person_id in person_df['person_id']:
             #mappingstream
             streamName = "mappingData_person"

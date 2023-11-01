@@ -120,7 +120,7 @@ def extractPositions(variantFile):
     positions = [output.decode('utf-8').split('\n')[0]]
     
     #get every 100th positions
-    request = "bcftools query -f \'%POS\n\' {} | head -20000 |  awk \'NR % 100 == 0\'".format(variantFile)
+    request = "bcftools query -f \'%POS\n\' {} | head -100000 |  awk \'NR % 100 == 0\'".format(variantFile)
     output = subprocess.check_output(request, shell = True)
     positions.extend(output.decode('utf-8').split('\n'))
 
@@ -138,7 +138,7 @@ def extractPositions(variantFile):
     
     
     #get last position
-    request = 'bcftools query -f \'%POS\n\' {} | head -20000 | tail -n 1'.format(variantFile)
+    request = 'bcftools query -f \'%POS\n\' {} | head -100000 | tail -n 1'.format(variantFile)
     output = subprocess.check_output(request, shell = True)
     last = output.decode('utf-8').split('\n')[0]
     pos_regions[s-1][-1] = last
