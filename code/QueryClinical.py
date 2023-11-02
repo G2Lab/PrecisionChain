@@ -156,7 +156,7 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
                                                                                                 stream[1], stream[2], bucket+1, person_id)
                     items = subprocess.check_output(queryCommand.split())
                     matches += json.loads(items, parse_int= int)
-                    if matches:
+                    # if matches:
                         # print(matches)
                     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     return matches
