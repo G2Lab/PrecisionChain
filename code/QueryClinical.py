@@ -129,7 +129,7 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys):
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     #BEGIN_NEW#
     demo = [match_['data']['json'] for match_ in matches]
-    print(demo)
+    # print(demo)
     #END_NEW#
     return matches
 
@@ -157,7 +157,7 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
                     items = subprocess.check_output(queryCommand.split())
                     matches += json.loads(items, parse_int= int)
                     if matches:
-                        print(matches)
+                        # print(matches)
                     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     return matches
 
@@ -173,7 +173,7 @@ def queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys
         items = subprocess.check_output(queryCommand.split())
         matches.extend(json.loads(items, parse_int= int))
         publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-    print(matches)
+    # print(matches)
     return matches
 
 
@@ -187,7 +187,7 @@ def queryPersonStreamSpecific(chainName, multichainLoc, datadir, person_ids, sea
             items = subprocess.check_output(queryCommand.split())
             matches.extend(json.loads(items, parse_int= int))
             publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-    print(matches)  
+    # print(matches)  
     return matches
 
 
