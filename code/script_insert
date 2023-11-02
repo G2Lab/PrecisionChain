@@ -14,7 +14,7 @@ module load multichain
 module load bcftools
 conda activate blockchain_env
 
-CN=public_access_2
+CN=public_access_3
 DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
 PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
 AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/preprocessing
@@ -37,30 +37,30 @@ reopen_connection() {
 
 
 #BUILD CHAIN
-python buildChain.py -cn=$CN --datadir=$DR
+#python buildChain.py -cn=$CN --datadir=$DR
 
 #RESTART CHAIN  --> This is used once chain exists. Then do not using buildChain.py
-#multichaind $CN --datadir=$DR -daemon
+multichaind $CN --datadir=$DR -daemon
 
 run_python_scripts() {
 
     #CLINICAL
 
-    python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
+    #python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
 
-    python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL -mf=$PT/data/samples/metadata.csv 
+    #python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL -mf=$PT/data/samples/metadata.csv 
 
-    python createStream-OMOP-Person.py -cn=$CN --datadir=$DR
+    #python createStream-OMOP-Person.py -cn=$CN --datadir=$DR
 
-    python insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL -mf=$PT/data/samples/metadata.csv 
+    #python insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL -mf=$PT/data/samples/metadata.csv 
 
     #GENETIC
-    python createStream-variants.py -cn=$CN --datadir=$DR
+    #python createStream-variants.py -cn=$CN --datadir=$DR
 
     ##WGS
-    python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
+    #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
 
-    python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
+    #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
 
     ##WES
     #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
@@ -78,12 +78,12 @@ run_python_scripts() {
     #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
 
     ##Analysis
-    python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
+    #python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
 
     ##GTF
-    python createStream-gtf.py -cn=$CN -dr=$DR
+    #python createStream-gtf.py -cn=$CN -dr=$DR
 
-    python insertData-gtf.py -cn=$CN -dr=$DR -gp=$PT/data/gtf -vp=$PT/data/vcf/wgs_2 -ap=$PT/data/annotations
+    python insertData-gtf.py -cn=$CN -dr=$DR -gp=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/remaining -vp=$PT/data/vcf/wgs_2 -ap=$PT/data/annotations
 
 }
 

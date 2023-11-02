@@ -78,7 +78,7 @@ def loadFilePaths(genePath, geneFiles, variantPath):
     for file in files:
         variantPath_ = f'{variantPath}/chr_{file}.vcf.gz'
         variantPaths.append(variantPath_)
-        gene = '{}/gtf_chr{}.txt'.format(genePath, file)
+        gene = '{}/gtf_variant_chr{}.txt'.format(genePath, file)
         genePaths.append(gene)
     paths = list(zip(genePaths, variantPaths, files))
     #shuffle insertion for multiprocessing as some files are much larger than others
@@ -153,8 +153,8 @@ def publishToStreams(gene, chainName, multichainLoc, datadir, chrom, variantFile
     values = gene[['start', 'end', 'gene_type','strand']].to_dict()
     values = str(values).replace("\'", '"')
     streamValues = '{'+'"json":{}'.format(values) +'}'
-    publishToGeneStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
-
+    #publishToGeneStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues)
+    
     ##extract variant info from VCF file related to that gene (i.e. all positions within start and end of gene)
     request = 'bcftools query -r {}:{}-{} -f \'%POS \' {}'.format(chrom, position[0], position[1], variantFile)
     output = subprocess.check_output(request, shell = True)  
@@ -219,8 +219,8 @@ def main():
 
     start = time.time()
     
-    cpu = multiprocessing.cpu_count() * 2
-    # cpu = 2
+    #cpu = multiprocessing.cpu_count() * 2
+    cpu = 2
     print('CPUs available: {}'.format(cpu))
     
     global annotation_path
