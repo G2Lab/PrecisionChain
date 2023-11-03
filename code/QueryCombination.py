@@ -712,10 +712,9 @@ def main():
         subscribeToStream(args.chainName, args.multichainLoc, args.datadir)
         if args.query == action_choices[0]:
             result = queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.cohortKeys, args.chromosome, args.positions, args.genotype)
-            return result
         ##deprecated
         elif args.query == action_choices[1]:
-            extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
+            result = extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
         
         ##deprecated
         elif args.query== action_choices[2]:
