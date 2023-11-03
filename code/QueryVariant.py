@@ -253,8 +253,8 @@ def queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, 
 
     print(variants_json)
     print(f'The following variants are not stored on chain {unavailable_variants}')
-    #return variants_json, variant_annotations
-    return variants_json
+    return variants_json, variant_annotations
+    #return variants_json
         
 
 
