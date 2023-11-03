@@ -725,9 +725,12 @@ def main():
         
         filtered_results = []
         if args.query == action_choices[3] and result_dict:
-            result = {str(k):v for k, v in result_dict.items()}
+            result = {str(k):json.loads(v.to_json(orient="records")) for k, v in result_dict.items()}
         elif type(result) is not list:
-            result = json.loads(result.to_json(orient="records"))
+            if type(result) is dict:
+                result = {str(k):v for k, v in result.items()}
+            if type(result) is pd.DataFrame:
+                result = json.loads(result.to_json(orient="records"))
         else:
             for item in result:
                 if type(item) is pd.DataFrame and item.empty:
