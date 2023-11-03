@@ -711,7 +711,7 @@ def main():
     try:
         subscribeToStream(args.chainName, args.multichainLoc, args.datadir)
         if args.query == action_choices[0]:
-            queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.cohortKeys, args.chromosome, args.positions, args.genotype)
+            result = queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.cohortKeys, args.chromosome, args.positions, args.genotype)
         
         ##deprecated
         elif args.query == action_choices[1]:
