@@ -34,6 +34,7 @@ from pprint import pprint as pp
 import json
 import pdb
 import itertools
+import traceback
 from json.decoder import JSONDecodeError
 warnings.simplefilter(action='ignore')
 
@@ -746,6 +747,7 @@ def main():
     
     except Exception as e:
         print(e)
+        traceback.print_exc()
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         
