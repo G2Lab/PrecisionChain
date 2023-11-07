@@ -480,6 +480,20 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
 
 # In[554]:
 
+def getVariantAnnotations(chainName, multichainLoc, datadir, chrom, variants):
+    """ Get annotations for a specific variant """
+    if isinstance(variants, str):
+        variants = variants.split(',')
+    annotations = {}
+    for variant in variants:
+        queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems gene_variant_chrom_{} {}'.format(chainName, datadir,
+                                                                                                                chrom, variant)
+        items = subprocess.check_output(queryCommand.split())
+        publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
+        matches = json.loads(items, parse_int= int)
+        annotations[variant] = [match_['data']['json'] for match_ in matches]
+    return annotations
+
 def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene, chrom):
     '''
     Given the gene of interest and clinical cohort definition, get the variants of those patients in that gene
@@ -526,10 +540,10 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
             MAF = calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt)
             variants_dict[key]['MAF'] = MAF
 
-    
+    variant_annotations = getVariantAnnotations(chainName, multichainLoc, datadir, chrom, variants)
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     
-    return variants_dict
+    return variants_dict, variant_annotations
 
 # In[556]:
 
@@ -546,7 +560,7 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
     '''
     if MAFRange != "":
         _, numericRanges = queryRangeParser(MAFRange)
-    variants_dict = queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene, chrom)
+    variants_dict, variant_annotations = queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene, chrom)
     variants_df = pd.DataFrame.from_dict(variants_dict, orient = 'index')
     if MAFRange != "":
         variants_df_filtered = variants_df[(variants_df['MAF'] >= numericRanges[0]) & (variants_df['MAF'] <= numericRanges[1])]
@@ -554,7 +568,7 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
         variants_df_filtered = variants_df
     # Avoid printing for now
     #print(variants_df_filtered)
-    return variants_df_filtered
+    return variants_df_filtered, variant_annotations
 
 # ## Variant to clinical queries
 def extractVariantPersonIDs(chainName, datadir, chrom, variant):
