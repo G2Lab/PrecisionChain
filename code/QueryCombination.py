@@ -284,11 +284,16 @@ def extractMAFPersonIDs(chainName, multichainLoc, datadir, chrom, inputRange):
         gt = row['gt']
         ##parses gt if heterozygous (unlikely to be needed now)
         gt = str(gt).replace('[','(').replace(']',')') if len(gt) > 1  else gt[0]
-        queryCommand = 'multichain-cli {} -datadir={} liststreamqueryitems chrom_{} {{"keys":["{}","{}"]}}'.format(
-            chainName, datadir, chrom, pos, gt)
+        queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {}'.format(
+                        chainName, datadir, chrom, pos, gt)
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
-        variant_dict[(pos, gt)] = matches[0]['data']['json']
+        if len(matches > 0):
+            for match_ in matches:
+                gt = match_['keys'][3]
+                variant_dict[(pos, gt)] = match_['data']['json']
+        else:
+            variant_dict[(pos, gt)] = []
 
     return variant_dict
 
@@ -388,6 +393,16 @@ def extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys):
 
 # In[553]:
 
+def extractAllPersonIDs(chainName, datadir):
+    ''' Parse all ids from chain'''
+    queryCommand =  f"multichain-cli {chainName} -datadir={datadir} liststreamkeyitems mappingData_person ids false 1"
+    items = subprocess.check_output(queryCommand.split(), stderr=subprocess.STDOUT)
+    items = items.decode("utf-8")
+    matches = json.loads(items.split("\n\n")[-1].split('"data" :')[-1].split(',\n        "confirmations" ')[0])
+    ids = matches['json']
+    return ids
+
+
 
 def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
     '''
@@ -421,8 +436,8 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
     ##if not a homozygous gt then carry out search and count number of samples that match
     if gt != '0|0':
         ##Search mapping stream for all the samples added to the chain
-        queryCommand='multichain-cli {} -datadir={} liststreamqueryitems chrom_{} {{"keys":["{}","{}"]}}'.format(chainName, datadir,
-                                                                                                    chrom, variant, gt)
+        queryCommand='multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {}'.format(chainName, datadir,
+                                                                                                    chrom, variant)
 
         items = subprocess.check_output(queryCommand.split())
         matches = json.loads(items, parse_int= int)
@@ -430,9 +445,10 @@ def calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt):
         alleleMatch = []
         #BEGIN_NEW#
         for match in matches:
+            if match['keys'][3] == gt:
             ##track mapping files for all unique samples added
                 try:
-                    alleleMatch.extend(match['data']['json'])
+                        alleleMatch.extend(match['data']['json'])
                 except:
                     items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
                     match = json.loads(items, parse_int= int)
@@ -495,10 +511,9 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
                 match_ = json.loads(items, parse_int= int)
                 variants_person.append(match_['json'])
         variants_person = dict(itertools.chain.from_iterable(d.items() for d in variants_person))
-        variants_person_filtered = {k:v for k,v in variants_person.items() if k in variants}
-        for variant in variants_person_filtered:
+        for variant in variants:
             try:
-                gt = variants_person_filtered[variant][-1]
+                gt = variants_person[variant][-1]
             except:
                 ##if patient has no variant stored here it must be 0|0 which is not stored on chain
                 gt = '0|0'
@@ -507,9 +522,9 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
                 variants_dict[key]['person_id'].append(person_id)
             else:
                 variants_dict[key] = {'person_id':[person_id]}
-                ##for each variant, calculate the MAF and also add this to the dictionary
-                MAF = calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt)
-                variants_dict[key]['MAF'] = MAF
+            ##for each variant, calculate the MAF and also add this to the dictionary
+            MAF = calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt)
+            variants_dict[key]['MAF'] = MAF
 
     
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
