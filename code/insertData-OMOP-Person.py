@@ -172,7 +172,7 @@ def subscribeToStreams(chainName, multichainLoc, datadir):
 
 def publishAllIDs(chainName, multichainLoc, datadir, person_df):
     """ Publishes list of all ids into the chain """
-    people = list(person_df['id'].values)
+    people = list(person_df['person_id'].values)
     people = [int(p) for p in people]
     streamName = "mappingData_person"
     streamKeys = 'ids'
