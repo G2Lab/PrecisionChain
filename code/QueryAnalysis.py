@@ -26,7 +26,8 @@ import json
 import warnings
 import multiprocessing
 import numpy as np
-from itertools import compress
+import dask.array as da
+import gc
 from datetime import datetime
 from scipy.stats import multivariate_normal
 
@@ -105,32 +106,33 @@ def querySampleRelatedness(chainName, datadir, sampleSearch):
 
 def calculate_mismatch(df):
     """ Cacluate hgmr and agmr matrices """
-    # Convert dataframe to numpy array
-    df_array = df.to_numpy(dtype=np.int64)  # Ensure the correct data type for calculations
+    #Convert to int to save space
+    df_array = df.to_numpy(dtype=np.int8) 
+    # Convert to Dask Array
+    df_dask_array = da.from_array(df.to_numpy(dtype=np.int8), chunks=(100, 1000))  # Chunk sizes are examples
 
-    # Calculate AGMR
-    # Using broadcasting to find mismatches across all pairs
-    agmr_matrix = np.not_equal(df_array[:, np.newaxis, :], df_array).mean(axis=2)
+    # AGMR Calculation
+    agmr_dask_matrix = da.not_equal(df_dask_array[:, None, :], df_dask_array).mean(axis=2)
+    agmr_matrix = agmr_dask_matrix.compute()  # This triggers the actual computation
+    agmr_df = pd.DataFrame(agmr_matrix, index=df.index, columns=df.index)
+    del agmr_matrix, agmr_dask_matrix
+    gc.collect()
 
-    # Calculate HGMR
-    # Identifying homozygous SNPs
-    homozygous = df_array % 2 == 0
-    homozygous_pairs = homozygous[:, np.newaxis, :] & homozygous
+    # HGMR Calculation
+    homozygous = df_dask_array % 2 == 0
+    homozygous_pairs = homozygous[:, None, :] & homozygous
     num_homozygous_pairs = homozygous_pairs.sum(axis=2)
     no_homozygous_pairs = num_homozygous_pairs == 0
-    num_homozygous_pairs[no_homozygous_pairs] = 1
-    mismatches = np.not_equal(df_array[:, np.newaxis, :], df_array)
+    num_homozygous_pairs = da.where(no_homozygous_pairs, 1, num_homozygous_pairs)
+    mismatches = da.not_equal(df_dask_array[:, None, :], df_dask_array)
     homozygous_mismatches = mismatches * homozygous_pairs
     sum_homozygous_mismatches = homozygous_mismatches.sum(axis=2)
-    num_homozygous_pairs_per_sample_pair = homozygous_pairs.sum(axis=2)
-    hgmr_matrix = np.divide(sum_homozygous_mismatches, num_homozygous_pairs_per_sample_pair,
-                            out=np.zeros_like(sum_homozygous_mismatches, dtype=float),
-                            where=num_homozygous_pairs_per_sample_pair != 0)
-
-    # Convert matrices back to pandas DataFrames
-    agmr_df = pd.DataFrame(agmr_matrix, index=df.index, columns=df.index)
-    hgmr_df = pd.DataFrame(hgmr_matrix, index=df.index, columns=df.index)
-
+    hgmr_matrix = da.divide(sum_homozygous_mismatches, num_homozygous_pairs)
+    hgmr_matrix = da.where(num_homozygous_pairs != 0, hgmr_matrix, 0)
+    hgmr_matrix_computed = hgmr_matrix.compute()
+    hgmr_df = pd.DataFrame(hgmr_matrix_computed, index=df.index, columns=df.index)
+    del hgmr_matrix, sum_homozygous_mismatches, num_homozygous_pairs, mismatches, homozygous_pairs, homozygous, df_array, df_dask_array
+    gc.collect()
     return agmr_df, hgmr_df
 
 def determine_relationships(agmr_df, hgmr_df, relationship_parameters):
