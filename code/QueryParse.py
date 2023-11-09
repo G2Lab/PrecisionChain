@@ -11,7 +11,7 @@ Helper functions to abstract parsing of returned data
 
 ROOT_DIR = '/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain'
 multichainLoc = ''
-chainName = 'public_access_2'
+chainName = 'public_access_3'
 datadir = f'{ROOT_DIR}/multichain'
 querydir = f'{ROOT_DIR}/public/code'
 metafile = f'{ROOT_DIR}/public/data/samples/metadata.csv'
@@ -121,7 +121,7 @@ def getPhenotype(pheno_id, demos):
 def getVariantDF(chrom, variants, genotype = 'all', metadata = None):
     """ Get variant in DF format """
     response = queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, metadata)
-    variants_dict = json.loads(response)
+    variants_dict = json.loads(response[0])
     data_for_df = []
     for variant, genotypes in variants_dict.items():
         for genotype, ids in genotypes.items():
@@ -135,7 +135,7 @@ def getVariantDF(chrom, variants, genotype = 'all', metadata = None):
     variants_df.index = variants_df.index.astype(str)
     return variants_df
 
-def runGwas(pc_df, phenos, variants_df):
+def runGwas(pc_df, phenos, variants_df, kSearch = 20):
     #Linear mixed model with age, gender and phenotype
     covariates = pc_df.merge(phenos, left_index =True, right_index=True)
     data = covariates.merge(variants_df, left_index =True, right_index=True)
