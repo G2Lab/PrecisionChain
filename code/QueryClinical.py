@@ -23,6 +23,7 @@ import warnings
 import multiprocessing
 from datetime import datetime 
 warnings.simplefilter(action='ignore', category=FutureWarning)
+import ast
 
 
 # In[ ]:
@@ -58,10 +59,15 @@ def queryMappingStream(chainName, multichainLoc, datadir, keys):
     concepts = []
     for key in keys:
         try:
-            queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_clinical {}'.format(chainName, datadir, key)
+            queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems mappingData_clinical {} false 9999'.format(chainName, datadir, key)
             items = subprocess.check_output(queryCommand.split())
-            info = tuple(json.loads(items, parse_int= int)[0]['keys'])
-            concepts.append(info)
+            response = json.loads(items, parse_int= int)
+            for r in response[:80]:
+                if r['keys'][0] == 'StreamsUsed':
+                    pass
+                else:
+                    info = (r['keys'][1], r['keys'][2], r['keys'][3])
+                    concepts.append(info)
         except:
             pass
     return list(set(concepts))
@@ -72,7 +78,7 @@ def queryMappingStream(chainName, multichainLoc, datadir, keys):
 
 def extractDataStream(chainName, multichainLoc, datadir, cohortKeys):
     matches = queryMappingStream(chainName, multichainLoc, datadir, cohortKeys)
-    concept_domain, concept_stream, concept_bucket = matches[0][1], matches[0][2], ast.literal_eval(matches[0][3])
+    concept_domain, concept_stream, concept_bucket = matches[0][0], matches[0][1], ast.literal_eval(matches[0][2])
     return concept_domain, concept_stream, concept_bucket
 
 
@@ -185,12 +191,12 @@ def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys)
     searchStreams = queryMappingStream(chainName, multichainLoc, datadir, searchKeys)
     ##for each stream:bucket of interest extract the relevant information
     for stream in searchStreams:
-        buckets = ast.literal_eval(stream[3])
+        buckets = ast.literal_eval(stream[-1])
         for bucket in buckets:
             ##loop through patients to ensure only querying data of patients of interest
             for person_id in person_ids:
                     queryCommand = multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems {}_id_{}_bucket_{} {} false 999'.format(chainName, datadir,
-                                                                                                stream[1], stream[2], bucket+1, person_id)
+                                                                                                stream[0], stream[1], bucket+1, person_id)
                     items = subprocess.check_output(queryCommand.split())
                     matches += json.loads(items, parse_int= int)
                     if matches:
