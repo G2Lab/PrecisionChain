@@ -34,6 +34,7 @@ from pprint import pprint as pp
 import json
 import pdb
 import itertools
+import traceback
 from json.decoder import JSONDecodeError
 warnings.simplefilter(action='ignore')
 
@@ -739,11 +740,10 @@ def main():
     try:
         subscribeToStream(args.chainName, args.multichainLoc, args.datadir)
         if args.query == action_choices[0]:
-            queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.cohortKeys, args.chromosome, args.positions, args.genotype)
-        
+            result = queryVariantClinical(args.chainName, args.multichainLoc, args.datadir, args.searchKeys, args.cohortKeys, args.chromosome, args.positions, args.genotype)
         ##deprecated
         elif args.query == action_choices[1]:
-            extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
+            result = extractGeneVariants(args.chainName, args.multichainLoc, args.datadir, args.gene, args.chromosome)
         
         ##deprecated
         elif args.query== action_choices[2]:
@@ -754,9 +754,12 @@ def main():
         
         filtered_results = []
         if args.query == action_choices[3] and result_dict:
-            result = {str(k):v for k, v in result_dict.items()}
+            result = {str(k):json.loads(v.to_json(orient="records")) for k, v in result_dict.items()}
         elif type(result) is not list:
-            result = json.loads(result.to_json(orient="records"))
+            if type(result) is dict:
+                result = {str(k):v for k, v in result.items()}
+            if type(result) is pd.DataFrame:
+                result = json.loads(result.to_json(orient="records"))
         else:
             for item in result:
                 if type(item) is pd.DataFrame and item.empty:
@@ -775,6 +778,7 @@ def main():
     
     except Exception as e:
         print(e)
+        traceback.print_exc()
         sys.stderr.write("\nERROR: Failed query. Please try again.\n")
         quit()
         
