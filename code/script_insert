@@ -14,7 +14,7 @@ module load multichain
 module load bcftools
 conda activate blockchain_env
 
-CN=public_access_4
+CN=public_access_3
 DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
 PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
 AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public/data/processing
