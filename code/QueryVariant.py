@@ -201,12 +201,20 @@ def queryVariant(chainName, multichainLoc, datadir, chrom, variant, genotype):
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     ##parse the matches normally if not homo-ref, if homo-ref then use specific function
+    variant_dict = {gt:[] for gt in genotype}
     for match in matches:
         gt = match['keys'][3]
         if gt in genotype:
-            variant_dict[gt] = match['data']['json']
+            try:
+                variant_dict[gt].extend(match['data']['json'])
+            except:
+                txid = match['data']['txid']
+                matches_txid = get_json_payload_from_txid(txid, chainName, datadir)
+                variant_dict[gt].extend(json.loads(matches_txid)['json'])
     if '0|0' in genotype:
         variant_dict['0|0'] = homozgyousPersons(chainName, multichainLoc, datadir, chrom, variant_dict)
+    for gt in variant_dict:
+        variant_dict[gt] = list(set(variant_dict[gt]))
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
     return variant_dict
 

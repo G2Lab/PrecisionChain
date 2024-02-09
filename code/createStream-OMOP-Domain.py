@@ -41,6 +41,7 @@ def parseTables(tables):
     if tables == 'all':
         tables = ['condition_occurrence', 'drug_exposure',
               'measurement', 'observation', 'procedure_occurrence', 'visit_occurrence']
+        tables = ['condition_occurrence', 'observation']
     
     #parse the tables that are part of user input
     else:

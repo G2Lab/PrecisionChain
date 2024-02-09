@@ -46,6 +46,7 @@ def parseTables(tables):
     #parse the tables that are part of user input (ADD IN MEASUREMENT LATER REMOVED TO SPEED UP INSERTION)
     if tables == 'all':
         tables = ['condition_occurrence', 'drug_exposure', 'observation', 'procedure_occurrence', 'visit_occurrence']
+        tables = ['condition_occurrence', 'observation']
     else:
         tables = str.split(tables.replace(" ",""), ',')
     return tables
@@ -173,26 +174,13 @@ def subscribeToStreams(chainName, multichainLoc, datadir):
 def publishAllIDs(chainName, multichainLoc, datadir, person_df):
     """ Publishes list of all ids into the chain """
     people = list(person_df['person_id'].values)
-    people = [int(p) for p in people]
-    streamName = "mappingData_person"
-    streamKeys = 'ids'
-    streamValues =json.dumps({"json":people})#create JSON 
-    publishCommand = [multichainLoc+'multichain-cli', 
-        str('{}'.format(chainName)), 
-        str('-datadir={}'.format(datadir)),
-        'publish',
-        str('{}'.format(streamName)), 
-        str('["{}"]'.format(streamKeys)),
-        str('{}'.format(streamValues))]
-    procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procPublish.wait()
-
-def publishGroupedDemographics(chainName, multichainLoc, datadir, person_df):
-    """ Push the demographics table as a table """
-    for column in person_df.columns[1:-1]:
-        streamName = "person_demographics"
-        streamKeys = column
-        streamValues =json.dumps({"json": person_df.set_index('person_id')[column].to_dict()})#create JSON 
+    num_groups = 1 + len(people)//3000
+    people_split = np.array_split(people,num_groups)
+    people_split = [list(p) for p in people_split]
+    for people in people_split:
+        streamName = "mappingData_person"
+        streamKeys = 'ids'
+        streamValues =json.dumps({"json":people})#create JSON 
         publishCommand = [multichainLoc+'multichain-cli', 
             str('{}'.format(chainName)), 
             str('-datadir={}'.format(datadir)),
@@ -202,6 +190,25 @@ def publishGroupedDemographics(chainName, multichainLoc, datadir, person_df):
             str('{}'.format(streamValues))]
         procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         procPublish.wait()
+
+def publishGroupedDemographics(chainName, multichainLoc, datadir, person_df):
+    """ Push the demographics table as a table """
+    num_groups = 1+ person_df.shape[0] // 3000
+    person_df_split = np.array_split(person_df, num_groups)
+    for person_df in person_df_split:
+        for column in person_df.columns[1:-1]:
+            streamName = "person_demographics"
+            streamKeys = column
+            streamValues =json.dumps({"json": person_df.set_index('person_id')[column].to_dict()})#create JSON 
+            publishCommand = [multichainLoc+'multichain-cli', 
+                str('{}'.format(chainName)), 
+                str('-datadir={}'.format(datadir)),
+                'publish',
+                str('{}'.format(streamName)), 
+                str('["{}"]'.format(streamKeys)),
+                str('{}'.format(streamValues))]
+            procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            procPublish.wait()
 
 def publishToMappingStreams(chainName, multichainLoc, datadir, person_df): 
     '''
@@ -318,8 +325,8 @@ def main():
     num = int(args.numberPeople)
     tables = parseTables(args.tables)
     processes = []
-    cpu = multiprocessing.cpu_count() * 2
-    # cpu = 2
+    #cpu = multiprocessing.cpu_count() * 2
+    cpu = 4
     print('CPUs available: {}'.format(cpu))
 
     try:

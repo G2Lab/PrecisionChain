@@ -215,7 +215,7 @@ def extractVariant(variantFile, positions, pos_region, sample_person, colnames, 
     samples = list(sample_person)
     #get variant data
     #BEGIN_NEW#
-    samples_chunked = [samples[i:i + 500] for i in range(0, len(samples), 500)]
+    samples_chunked = [samples[i:i + 1000] for i in range(0, len(samples), 1000)]
     df = None
     for sample_chunk in samples_chunked:
         colnames= ['pos', 'ref', 'alt'] + sample_chunk
@@ -321,9 +321,15 @@ def publishToDataStreams(chainName, multichainLoc, datadir, alt_genotypes, chrom
             streamName = chrom
             streamKeys = [pos, ref, alt, allele, MAF[(pos,ref,alt, allele)][0], MAF[(pos,ref,alt, allele)][1], MAF[(pos,ref,alt, allele)][2]]
             streamKeys[1] = streamKeys[1].replace("'",'')
-            streamValues ='{'+'"json":{}'.format(row[gt]) +'}'#create JSON data object
-            streamValues = streamValues.replace("'",'"')
-            publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues, publishVariant)
+            chunk_size = 5000
+            genotype_data = row[gt]
+            for start in range(0, len(genotype_data), chunk_size):
+                end = start + chunk_size
+                chunk = genotype_data[start:end]
+                chunk = [int(c) for c in chunk]
+                streamValues = '{"json":' + json.dumps(chunk) + '}' # Create JSON data object
+                streamValues = streamValues.replace("'", '"')
+                publishToDataStream(chainName, multichainLoc, datadir, streamName, streamKeys, streamValues, publishVariant)
     return 
 
 
@@ -480,7 +486,7 @@ def main():
     
     cpu = multiprocessing.cpu_count() * 2
     person = int(args.numberPeople)
-    cpu = min(cpu, person)
+    cpu = 4
     print('CPUs available: {}'.format(cpu))
     
     try:

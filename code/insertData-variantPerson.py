@@ -199,20 +199,25 @@ def publishMappingPerson(chainName, multichainLoc, datadir, meta):
         print("Skipping publishToMappingStream in worker nodes")
         return
     samples = list(meta['id'].values)
-    streamName = 'mappingData_variants'
-    streamKeys = 'samples'
-    streamValues = '{'+'"json":{}'.format(json.dumps(samples)) + '}'
-    publishCommand = [multichainLoc+'multichain-cli', 
-        str('{}'.format(chainName)), 
-        str('-datadir={}'.format(datadir)),
-        'publish',
-        str('{}'.format(streamName)), 
-        str('{}'.format(streamKeys)),
-        str('{}'.format(streamValues))]
+    
+    num_groups = 1 + len(samples) // 3000
+    samples_split = np.array_split(samples, num_groups)
+    samples_split = [list(s) for s in samples_split]
+    for s in samples_split:
+        streamName = 'mappingData_variants'
+        streamKeys = 'samples'
+        streamValues = '{'+'"json":{}'.format(json.dumps(s)) + '}'
+        publishCommand = [multichainLoc+'multichain-cli', 
+            str('{}'.format(chainName)), 
+            str('-datadir={}'.format(datadir)),
+            'publish',
+            str('{}'.format(streamName)), 
+            str('{}'.format(streamKeys)),
+            str('{}'.format(streamValues))]
     
     
-    procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procPublish.wait()
+        procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        procPublish.wait()
     
     ## person mapping
     for i, row in meta.iterrows():
@@ -231,20 +236,24 @@ def publishMappingPerson(chainName, multichainLoc, datadir, meta):
 
     ## by sequence
     for seq in meta['sequence'].unique():
-        s = list(meta['id'][meta['sequence'] == seq])
-        streamName = 'mappingData_variants'
-        streamKeys = f'{seq}'
-        streamValues = '{'+'"json":{}'.format(json.dumps(s)) + '}'
-        publishCommand = [multichainLoc+'multichain-cli', 
-            str('{}'.format(chainName)), 
-            str('-datadir={}'.format(datadir)),
-            'publish',
-            str('{}'.format(streamName)), 
-            str('{}'.format(streamKeys)),
-            str('{}'.format(streamValues))]
+        samples_seq = list(meta['id'][meta['sequence'] == seq])
+        num_groups = 1 + len(samples_seq) // 3000
+        samples_split = np.array_split(samples_seq, num_groups)
+        samples_split = [list(s) for s in samples_split]
+        for s in samples_split:
+            streamName = 'mappingData_variants'
+            streamKeys = f'{seq}'
+            streamValues = '{'+'"json":{}'.format(json.dumps(s)) + '}'
+            publishCommand = [multichainLoc+'multichain-cli', 
+                str('{}'.format(chainName)), 
+                str('-datadir={}'.format(datadir)),
+                'publish',
+                str('{}'.format(streamName)), 
+                str('{}'.format(streamKeys)),
+                str('{}'.format(streamValues))]
 
-        procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        procPublish.wait()
+            procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            procPublish.wait()
     return
 
 
@@ -296,7 +305,7 @@ def main():
     start = time.time()
     
     cpu = multiprocessing.cpu_count() * 2
-    # cpu = 2
+    cpu = 4
     people = int(args.numberPeople)
 
     print('CPUs available: {}'.format(cpu))

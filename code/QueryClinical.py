@@ -153,6 +153,11 @@ def queryDemographics(chainName, multichainLoc, datadir, cohortKeys, domain = Fa
     #END_NEW#
     return matches
 
+def queryPhenos(chainName, multichainLoc, datadir, cohortKeys):
+    personids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
+    df = pd.DataFrame(personids, columns = ['person_id'])
+    return df
+
 def queryGroupDemographics(chainName, multichainLoc, datadir, searchKeys):
     """ retrieves person demographics of the full group, done by data point eg. birth_datetime """
     if isinstance(searchKeys,str):
@@ -167,14 +172,15 @@ def queryGroupDemographics(chainName, multichainLoc, datadir, searchKeys):
         matches += json.loads(items, parse_int= int)
         #publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
 
-    demo_data= []
+    demo_data = {k:{} for k in keys}
     for match in matches:
+        match_key = match['keys'][0]
         if 'txid' in match['data']:
             items = get_json_payload_from_txid(match['data'].get('txid'), chainName, datadir)
             matches_txid = json.loads(items, parse_int= int)
-            demo_data.extend([matches_txid['json']])
+            demo_data[match_key].update(matches_txid['json'])
         else:
-            demo_data.extend([match['data']['json']])
+            demo_data[match_key].update([match['data']['json']])
     return demo_data
 
 def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
@@ -243,6 +249,8 @@ def domainQuery(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
     cohortKeys, searchKeys = parseKeys(cohortKeys, searchKeys)
     if searchKeys[0] == 'demographics':
         results = queryDemographics(chainName, multichainLoc, datadir, cohortKeys, domain = True)
+    elif searchKeys[0] == 'pheno':
+        results = queryPhenos(chainName, multichainLoc, datadir, cohortKeys)
     elif searchKeys[0] == 'all' :
         results = queryPersonStreams(chainName, multichainLoc, datadir, cohortKeys, searchKeys, person = False)
     else:

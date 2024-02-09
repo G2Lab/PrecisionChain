@@ -117,21 +117,24 @@ def publishMetadata(chainName, multichainLoc, datadir, meta):
         procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         procPublish.wait()
 
+    num_groups = 1 + meta.shape[0] // 3000 #Max size of each entry
+    meta_split = np.array_split(meta,num_groups)
     for col in meta.columns[1:]:
-        for values in meta[col].unique():
-            ids = list(meta.loc[:,'id'][meta[col] ==values].values)
-            streamName = 'mappingData_metadata'
-            streamKeys = '["{}", "{}"]'.format(col, values)
-            streamValues = '{'+'"json":{}'.format(json.dumps(ids)) + '}'
-            publishCommand = [multichainLoc+'multichain-cli', 
-                str('{}'.format(chainName)), 
-                str('-datadir={}'.format(datadir)),
-                'publish',
-                str('{}'.format(streamName)), 
-                str('{}'.format(streamKeys)),
-                str('{}'.format(streamValues))]
-            procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            procPublish.wait()
+        for meta in meta_split:
+            for values in meta[col].unique():
+                ids = list(meta.loc[:,'id'][meta[col] ==values].values)
+                streamName = 'mappingData_metadata'
+                streamKeys = '["{}", "{}"]'.format(col, values)
+                streamValues = '{'+'"json":{}'.format(json.dumps(ids)) + '}'
+                publishCommand = [multichainLoc+'multichain-cli', 
+                    str('{}'.format(chainName)), 
+                    str('-datadir={}'.format(datadir)),
+                    'publish',
+                    str('{}'.format(streamName)), 
+                    str('{}'.format(streamKeys)),
+                    str('{}'.format(streamValues))]
+                procPublish = subprocess.Popen(publishCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                procPublish.wait()
 
 
 ### PCA
@@ -276,7 +279,7 @@ def main():
     
     cpu = multiprocessing.cpu_count()
     person = int(args.numberPeople)
-    cpu = min(cpu, person)
+    cpu = 4
     print('CPUs available: {}'.format(cpu))
     
     try:

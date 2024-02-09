@@ -111,7 +111,7 @@ def exractGeneData(chainName, multichainLoc, datadir, gene, variant, chrom):
 # In[543]:
 
 def extractVariantsStored(chainName, datadir, chrom):
-    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants chrom_{} false 999'.format(chainName, datadir, chrom)
+    queryCommand = 'multichain-cli {} -datadir={} liststreamkeyitems mappingData_variants chrom_{} false 9999'.format(chainName, datadir, chrom)
     items = subprocess.check_output(queryCommand.split())
     matches = json.loads(items, parse_int= int)
     variants = []
@@ -507,9 +507,8 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
     ##extract personIDs for cohort and variants associated with the gene of interest
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
     variants = extractGeneVariants(chainName, multichainLoc, datadir, gene, chrom)
-
     variants_dict = {}
-    for variant in variants:
+    for variant in variants[0:10]:
         queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {} false 999999'.format(chainName, datadir,
                                                                                                         chrom, variant)
 
@@ -536,9 +535,9 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
             MAF = calculateMAF(chainName, multichainLoc, datadir, chrom, variant, gt)
             variants_dict[(variant,gt)] = {"person_id": list(set(person_ids)-set(persons_included)),
                                     "MAF":MAF}
-    variant_annotations = getVariantAnnotations(chainName, multichainLoc, datadir, chrom, variants)
+    #variant_annotations = getVariantAnnotations(chainName, multichainLoc, datadir, chrom, variants)
+    variant_annotations = None
     publishToAuditstream(chainName, multichainLoc, datadir, queryCommand)
-    
     return variants_dict, variant_annotations
 
 # In[556]:
@@ -662,13 +661,12 @@ def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, cohortKe
         for key in persons_gt:
             if key[1] == gt:
                 person_ids = persons_gt[key]
-        ##get the info of interest
-        if searchKeys[0] == 'demographics':
-            data = queryDemographics(chainName, multichainLoc, datadir, person_ids, cohortKeys)
-        else:
-            data = queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys)
-
-        return data
+                ##get the info of interest
+                if searchKeys[0] == 'demographics':
+                    data = queryDemographics(chainName, multichainLoc, datadir, person_ids, cohortKeys)
+                else:
+                    data = queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys)
+                return data
     else:
         return
 

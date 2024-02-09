@@ -56,6 +56,7 @@ def parseTables(tables):
     #parse the tables that are part of user input (ADD IN MEASUREMENT LATER REMOVED TO SPEED UP INSERTION)
     if tables == 'all':
         tables = ['condition_occurrence', 'drug_exposure',  'observation', 'procedure_occurrence', 'visit_occurrence']
+        tables = ['condition_occurrence', 'observation']
     else:
         tables = str.split(tables.replace(" ",""), ',')
     return tables
@@ -432,8 +433,8 @@ def main():
     args = parser.parse_args()
 
     start = time.time()
-    cpu = multiprocessing.cpu_count() * 2
-    # cpu = 2
+    #cpu = multiprocessing.cpu_count() * 2
+    cpu = 4
     num = int(args.numberPeople)
     print('CPUs available: {}'.format(cpu))
     tables = parseTables(args.tables)

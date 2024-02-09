@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-#SBATCH --job-name=public
+#SBATCH --job-name=query_4k
 #SBATCH --partition=pe2
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=aelhussein@nygenome.org
@@ -14,17 +14,27 @@ module load multichain
 module load bcftools
 conda activate blockchain_env
 
-CN=public_access_3
+CN=query_4k
 DR=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/multichain
 PT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public
 AT=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/public/data/processing
 
+
 #SAMPLE NUMBERS
-PPL=1000
-PPL_GS=1000
-PPL_ES=0
-PPL_AF=0
-PPL_BC=0
+declare -A ppl_data=(
+    ["query_100"]="100 0 0 0 0"
+    ["query_1k"]="1000 1000 0 0 0"
+    ["query_2k"]="2000 1000 500 250 250"
+    ["query_4k"]="4000 2000 1000 500 500"
+    ["query_8k"]="8000 2000 2000 2000 2000"
+    ["query_12k"]="12000 2000 2000 4000 4000"
+)
+if [[ -n ${ppl_data[$CN]} ]]; then
+    read PPL PPL_GS PPL_ES PPL_AF PPL_BC <<< ${ppl_data[$CN]}
+else
+    echo "CN entry not found in data"
+    exit 1
+fi
 
 check_connection() {
     multichain-cli $CN --datadir=$DR getinfo 2>&1
@@ -33,6 +43,20 @@ check_connection() {
 # Function to reopen the connection
 reopen_connection() {
     multichaind $CN --datadir=$DR -daemon
+}
+
+
+connection()  {
+    # Check the connection
+    connection_status=$(check_connection)
+    
+    # If the error message contains the connection closed indication
+    if [[ $connection_status == *"error: Could not connect to the server"* ]]; then
+        echo "Connection is closed. Reopening..."
+        
+        # Reopen the connection
+        reopen_connection
+    fi
 }
 
 
@@ -49,11 +73,11 @@ run_python_scripts() {
     python createStream-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/
 
     python insertData-OMOP-Domain.py -cn=$CN --datadir=$DR -hp=$PT/data/mapping_vocab/CONCEPT_ANCESTOR.csv -dp=$PT/data/clinical/ -np=$PPL -mf=$PT/data/samples/metadata.csv 
-
+    
     python createStream-OMOP-Person.py -cn=$CN --datadir=$DR
 
     python insertData-OMOP-Person.py -cn=$CN --datadir=$DR -dp=$PT/data/clinical/ --personPath=$PT/data/clinical/person.csv -np=$PPL -mf=$PT/data/samples/metadata.csv 
-
+    
     #GENETIC
     python createStream-variants.py -cn=$CN --datadir=$DR
 
@@ -63,19 +87,25 @@ run_python_scripts() {
     python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -np=$PPL_GS -sq=WGS
 
     ##WES
-    #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+    if [[ $PPL_ES != 0 ]]; then
+        python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
 
-    #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+        python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wes -mf=$PT/data/samples/metadata.csv -np=$PPL_ES -sq=WES
+    fi
 
     ##AFFYMETRIX
-    #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+    if [[ $PPL_AF != 0 ]]; then
+        python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
 
-    #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+        python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/affymetrix -mf=$PT/data/samples/metadata.csv -np=$PPL_AF -sq=Affymetrix
+    fi
 
     ##BEADCHIP
-    #python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+    if [[ $PPL_BC != 0 ]]; then
+        python insertData-variant.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
 
-    #python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+        python insertData-variantPerson.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/beadchip -mf=$PT/data/samples/metadata.csv -np=$PPL_BC -sq=BeadChip
+    fi
 
     ##Analysis
     python insertData-analysis.py -cn=$CN --datadir=$DR -dp=$PT/data/vcf/wgs_3 -mf=$PT/data/samples/metadata.csv -pc=$AT/ -rf=$AT/relatedness -np=$PPL_GS 
@@ -83,23 +113,10 @@ run_python_scripts() {
     ##GTF
     python createStream-gtf.py -cn=$CN -dr=$DR
 
-    python insertData-gtf.py -cn=$CN -dr=$DR -gp=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/remaining -vp=$PT/data/vcf/wgs_2 -ap=$PT/data/annotations
+    python insertData-gtf.py -cn=$CN -dr=$DR -gp=/gpfs/commons/groups/gursoy_lab/aelhussein/blockchain/data/remaining -vp=$PT/data/vcf/wgs_3 -ap=$PT/data/annotations
 
-}
+}   
 
-run_python_scripts &
+run_python_scripts
 
-while true; do
-    sleep 1000
-    # Check the connection
-    connection_status=$(check_connection)
-    
-    # If the error message contains the connection closed indication
-    if [[ $connection_status == *"error: Could not connect to the server"* ]]; then
-        echo "Connection is closed. Reopening..."
-        
-        # Reopen the connection
-        reopen_connection
-    fi
-done
 

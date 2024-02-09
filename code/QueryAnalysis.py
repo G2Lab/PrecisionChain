@@ -36,6 +36,10 @@ warnings.simplefilter(action='ignore')
 
 # In[ ]:
 
+def get_json_payload_from_txid(txid, chainName, datadir):
+    queryCommand = 'multichain-cli {} -datadir={} gettxoutdata {} 0'.format(chainName, datadir, txid)
+    items = subprocess.check_output(queryCommand.split())
+    return items
 
 #Given a chain name subscribe to audit log stream to ensure query is recorded
 def subscribeToStream(chainName, multichainLoc, datadir):
@@ -170,7 +174,7 @@ def assess_kinship(rl_df):
 def queryKinship(chainName, datadir, sampleSearch):
     rl_df, af = querySampleRelatedness(chainName, datadir, sampleSearch)
     relationships = assess_kinship(rl_df)
-    #print(relationships.to_json())
+    print(relationships.to_json())
     return relationships.to_json()
 
 # Metadata queries
@@ -192,9 +196,18 @@ def queryMetadata(chainName, datadir, search_values):
     if search_values:
         search_values = search_values.split(',')
         for search_value in search_values:
+            all_patient_ids
             filtered_dicts = [d for d in matches if all(key in d['keys'] for key in [search_value])]
             return_value = [[x for x in d["keys"] if x!=search_value][0] for d in filtered_dicts]
-            patient_ids = {key:d['data']['json'] for d, key in zip(filtered_dicts, return_value)}
+            patient_ids = {key:[] for key in return_value}
+            for i, (d, key) in enumerate(zip(filtered_dicts, return_value)):
+                try:
+                    patient_ids[i].extend(d['data']['json'])
+                except:
+                    txid = filtered_dicts[i]['data']['txid']
+                    txid_items = get_json_payload_from_txid(txid, chainName, datadir)
+                    txid_matches = json.loads(txid_items)['json']
+                    patient_ids[key].extend(txid_matches)
             all_patient_ids[search_value] = patient_ids
     #print(all_patient_ids)
     return all_patient_ids
