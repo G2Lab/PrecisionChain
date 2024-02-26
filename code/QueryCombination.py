@@ -508,7 +508,7 @@ def queryClinicalGeneVariant(chainName, multichainLoc, datadir, cohortKeys, gene
     person_ids = extractPersonIDs(chainName, multichainLoc, datadir, cohortKeys)
     variants = extractGeneVariants(chainName, multichainLoc, datadir, gene, chrom)
     variants_dict = {}
-    for variant in variants[0:10]:
+    for variant in variants[0:20]:
         queryCommand=multichainLoc+'multichain-cli {} -datadir={} liststreamkeyitems chrom_{} {} false 999999'.format(chainName, datadir,
                                                                                                         chrom, variant)
 
@@ -562,7 +562,7 @@ def queryClinicalGeneVariantRange(chainName, multichainLoc, datadir, cohortKeys,
     else:
         variants_df_filtered = variants_df
     # Avoid printing for now
-    #print(variants_df_filtered)
+    print(variants_df_filtered)
     return variants_df_filtered, variant_annotations
 
 # ## Variant to clinical queries
@@ -666,6 +666,7 @@ def queryVariantClinical(chainName, multichainLoc, datadir, searchKeys, cohortKe
                     data = queryDemographics(chainName, multichainLoc, datadir, person_ids, cohortKeys)
                 else:
                     data = queryPersonStreams(chainName, multichainLoc, datadir, person_ids, searchKeys)
+                print(data)
                 return data
     else:
         return

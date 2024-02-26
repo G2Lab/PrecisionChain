@@ -202,7 +202,7 @@ def queryMetadata(chainName, datadir, search_values):
             patient_ids = {key:[] for key in return_value}
             for i, (d, key) in enumerate(zip(filtered_dicts, return_value)):
                 try:
-                    patient_ids[i].extend(d['data']['json'])
+                    patient_ids[key].extend(d['data']['json'])
                 except:
                     txid = filtered_dicts[i]['data']['txid']
                     txid_items = get_json_payload_from_txid(txid, chainName, datadir)

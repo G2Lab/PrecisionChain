@@ -106,6 +106,27 @@ def getAgeGender(chainName, multichainLoc, datadir, ids):
 
     return demo_processed.loc[ids]
 
+
+def getAgeGenderRace(chainName, multichainLoc, datadir, ids):
+    """ extract the race age and gender of all patients """
+    searchKeys = 'birth_datetime,gender_concept_id,race_concept_id'
+    demo_data = queryGroupDemographics(chainName, multichainLoc, datadir, searchKeys)
+    demographics = pd.DataFrame(demo_data).T
+    keys = searchKeys.split(',')
+    demographics.columns = keys
+
+    demographics['birth_datetime'] = pd.to_datetime(demographics['birth_datetime'])
+    current_date = pd.to_datetime('2023-07-06')
+    demographics['age'] = (current_date - demographics['birth_datetime']).dt.days / 365.25
+    demo_processed = demographics[['gender_concept_id', 'age']]
+    demo_processed['gender'] = demo_processed['gender_concept_id'].replace({8507:0, 8532:1})
+    demo_processed.drop(columns = 'gender_concept_id', inplace = True)
+    if isinstance(ids,str):
+        ids = ids.split(',')
+
+    return demo_processed.loc[ids]
+
+
 def getPhenotype(pheno_id, demos):
     """ Get phenotype of interest """
     searchKeys = 'demographics' # returns basic information for patients with disease. can be changed if more complex info needed
@@ -135,6 +156,27 @@ def getVariantDF(chrom, variants, genotype = 'all', metadata = None):
     variants_df.index = variants_df.index.astype(str)
     return variants_df
 
+def getVariantDF2(chrom, variants = 'all', genotype = 'all', metadata = None):
+    """ Get variant in DF format """
+    response = queryVariants(chainName, multichainLoc, datadir, chrom, variants, genotype, metadata)
+    variants_dict = json.loads(response)
+    data_for_df = []
+    variants = []
+    for variant, genotypes in variants_dict.items():
+        variants.append(variant)
+        for genotype, ids in genotypes.items():
+            for id_ in ids:
+                data_for_df.append({'variant': variant, 'genotype': genotype, 'id': id_})
+    df = pd.DataFrame(data_for_df)
+    variants_df = df.pivot(index='id', columns='variant', values='genotype').reset_index()
+    variants_df.set_index('id', inplace=True)
+    variants_df.replace({"0/0":0, "0/1":1, "1/0":1, "1/1":1, "./.":0}, inplace = True)
+    variants_df.columns = [f'var_{chrom}_{variant}' for variant in variants_df.columns]
+    variants_df.index = variants_df.index.astype(str)
+    variants_df = variants_df.groupby(variants_df.index).first() #merge the rows of the same sample
+    variants_df =variants_df.astype(int)
+    return variants_df
+
 def runGwas(pc_df, phenos, variants_df, kSearch = 20):
     #Linear mixed model with age, gender and phenotype
     covariates = pc_df.merge(phenos, left_index =True, right_index=True)
@@ -143,3 +185,46 @@ def runGwas(pc_df, phenos, variants_df, kSearch = 20):
     md = smf.ols(formula, data)
     mdf = md.fit()
     return mdf
+
+def runGwas2(pc_df, phenos, demos, variants_df):
+    # Merge covariate dataframes
+    covariates = pc_df.merge(phenos, left_index=True, right_index=True)
+    covariates = covariates.merge(demos, left_index=True, right_index=True)
+    
+    # Initialize results DataFrame
+    results = pd.DataFrame(columns=['#CHROM', 'POS', 'BETA', 'SE', 'T_STAT', 'P'])
+    
+    # Iterate over each variant column in the variants_df
+    for col in variants_df.columns:
+        # Merge covariates with variant data
+        data = covariates.merge(variants_df[[col]], left_index=True, right_index=True, how='right')
+        
+        # Define the model formula, including phenotype as the outcome and incorporating covariates
+        formula = f"{col} ~ phenotype + age + " + ' + '.join([f'V{i}' for i in range(1, 5)])
+        
+        # Fit the logistic regression model
+        md = smf.glm(formula, data=data, family=sm.families.Binomial())
+        mdf = md.fit()
+        
+        # Extract model results
+        coeff = np.exp(mdf.params['phenotype'])
+        pvalue = mdf.pvalues['phenotype']
+        tvalue = mdf.tvalues['phenotype']
+        se = mdf.bse['phenotype']
+        
+        # Parse chromosome and position from variant column name
+        chrom_variant = col.split('_')
+        chrom, variant = chrom_variant[1], chrom_variant[2]
+        
+        # Append results to the DataFrame
+        results = results.append({
+            '#CHROM': chrom, 
+            'POS': variant, 
+            'BETA': coeff, 
+            'SE': se, 
+            'T_STAT': tvalue, 
+            'P': pvalue
+        }, ignore_index=True)
+    
+    # Return the results DataFrame
+    return results

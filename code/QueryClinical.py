@@ -181,6 +181,7 @@ def queryGroupDemographics(chainName, multichainLoc, datadir, searchKeys):
             demo_data[match_key].update(matches_txid['json'])
         else:
             demo_data[match_key].update([match['data']['json']])
+    print(demo_data)
     return demo_data
 
 def queryDomainStream(chainName, multichainLoc, datadir, cohortKeys, searchKeys):
